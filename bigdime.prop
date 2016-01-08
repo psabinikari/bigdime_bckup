@@ -1,4 +1,0 @@
-## sample values for now, this is to hold the common information(example : versions) shared acorss all pom files under big dime.
-core-framework-version-1 = 1.0.0
-meta-framework-version-1 = 1.0.0
-

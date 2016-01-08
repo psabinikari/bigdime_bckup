@@ -3,11 +3,8 @@
  */
 package io.bigdime.core.config;
 
-import java.util.HashMap;
-import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.Map;
-import java.util.Map.Entry;
 
 import org.codehaus.jackson.JsonNode;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,7 +15,6 @@ import io.bigdime.alert.Logger.ALERT_SEVERITY;
 import io.bigdime.alert.Logger.ALERT_TYPE;
 import io.bigdime.alert.LoggerFactory;
 import io.bigdime.core.AdaptorConfigurationException;
-import io.bigdime.core.InvalidDataTypeConfigurationException;
 import io.bigdime.core.RequiredParameterMissingConfigurationException;
 import io.bigdime.core.commons.AdaptorLogger;
 import io.bigdime.core.commons.JsonHelper;
@@ -48,24 +44,13 @@ public final class SourceConfigReader {
 		 *
 		 */
 		final JsonNode srcDesc = jsonHelper.getRequiredNode(sourceNode, SourceConfigConstants.SRC_DESC);
-		Map<String, String> srcDescMap = new HashMap<>();
-		final Iterator<Entry<String, JsonNode>> srcDescIter = srcDesc.getFields();
-
-		if ((srcDesc.size() > 0) && (srcDescIter != null)) {
-			while (srcDescIter.hasNext()) {
-				final Entry<String, JsonNode> entry = srcDescIter.next();
-				if (entry.getValue().isTextual()) {
-					srcDescMap.put(entry.getKey(), entry.getValue().getTextValue());
-				} else {
-					throw new InvalidDataTypeConfigurationException(SourceConfigConstants.SRC_DESC, "text node");
-				}
-			}
-
-		} else {
+		if (srcDesc.size() < 1) {
 			logger.alert(ALERT_TYPE.ADAPTOR_FAILED_TO_START, ALERT_CAUSE.INVALID_ADAPTOR_CONFIGURATION,
 					ALERT_SEVERITY.BLOCKER, "{} param must be specified", SourceConfigConstants.SRC_DESC);
 			throw new RequiredParameterMissingConfigurationException(SourceConfigConstants.SRC_DESC);
+
 		}
+		Map<String, Object> srcDescMap = jsonHelper.getNodeTree(srcDesc);
 
 		/*
 		 * @formatter:off

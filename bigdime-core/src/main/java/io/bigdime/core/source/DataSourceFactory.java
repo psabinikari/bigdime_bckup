@@ -11,7 +11,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -21,6 +20,8 @@ import io.bigdime.core.Handler;
 import io.bigdime.core.InvalidValueConfigurationException;
 import io.bigdime.core.Source;
 import io.bigdime.core.commons.AdaptorLogger;
+import io.bigdime.core.commons.DescriptorParser;
+import io.bigdime.core.commons.DescriptorParserFactory;
 import io.bigdime.core.config.HandlerConfig;
 import io.bigdime.core.config.SourceConfig;
 import io.bigdime.core.handler.HandlerFactory;
@@ -46,8 +47,8 @@ public final class DataSourceFactory {
 		}
 		Collection<Source> dataSources = new HashSet<>();
 		int sourceInstance = 0;
-		Map<String, String> descInputEntry = SrcDescReader.getDescriptorEntryMap(sourceConfig);
-		for (Entry<String, String> entry : descInputEntry.entrySet()) {
+		Map<Object, String> descInputEntry = SrcDescReader.getDescriptorEntryMap(sourceConfig);
+		for (Entry<Object, String> entry : descInputEntry.entrySet()) {
 			sourceInstance++;
 			final DataSource dataSource = new DataSource(getHandlers(sourceConfig.getHandlerConfigs(), entry),
 					sourceConfig.getName() + "-" + sourceInstance);
@@ -58,7 +59,7 @@ public final class DataSourceFactory {
 	}
 
 	private LinkedHashSet<Handler> getHandlers(final Set<HandlerConfig> handlerConfigs,
-			Entry<String, String> descInputEntry) throws AdaptorConfigurationException {
+			Entry<Object, String> descInputEntry) throws AdaptorConfigurationException {
 		final LinkedHashSet<Handler> handlers = new LinkedHashSet<>();
 		// final LinkedHashSet<HandlerConfig> handlerConfigs =
 		// sourceConfig.getHandlerConfigs();
@@ -113,52 +114,25 @@ public final class DataSourceFactory {
 		 * @return
 		 * @throws InvalidValueConfigurationException 
 		 */
-		private static Map<String, String> getDescriptorEntryMap(SourceConfig sourceConfig)
+		private static Map<Object, String> getDescriptorEntryMap(SourceConfig sourceConfig)
 				throws InvalidValueConfigurationException {
-			Map<String, String> descInputEntry = new HashMap<>();
-			Map<String, String> srcDesc = sourceConfig.getSrcDesc();
-			for (Entry<String, String> input : srcDesc.entrySet()) {
-				String descriptors = input.getValue(); // srcDesc.get(input);
-				String[] inputArray = descriptors.split(":");
-				logger.debug("parsing src_desc->input", "1:inputArray=\"{}\"", inputArray.length);
-
-				String desc = "";
-				if (inputArray.length == 2) {
-					final String part1 = inputArray[0].trim();
-					final String part2Str = inputArray[1];
-					final String[] part2Array = part2Str.split(",");
-					for (String part2 : part2Array) {
-						logger.debug("parsing src_desc->input", "part1=\"{}\" part2=\"{}\"", part1, part2);
-						part2 = part2.trim();
-						// if (StringUtils.isBlank(part1) ||
-						// StringUtils.isBlank(part2))
-						// throw new InvalidValueConfigurationException(
-						// "invalid value specified for " + input.getKey());
-						desc = part1 + ":" + part2;
-						logger.debug("putting srcDesc", "desc=\"{}\" input=\"{}\"", desc, input.getKey());
-						descInputEntry.put(desc, input.getKey());
-						// inputs.put(part1 + ":" + part2, key);
-					}
-				} else if (inputArray.length == 1) {
-					final String part2Str = inputArray[0];
-					final String[] part2Array = part2Str.split(",");
-					for (final String part2 : part2Array) {
-						logger.debug("parsing src_desc->input", "part2=\"{}\"", part2);
-						// inputs.put(part2, key);
-						desc = part2.trim();
-						if (StringUtils.isBlank(desc))
-							throw new InvalidValueConfigurationException(
-									"invalid value(blank) specified for " + input.getKey());
-						logger.debug("putting srcDesc", "desc=\"{}\" input=\"{}\"", desc, input);
-						logger.debug("putting srcDesc", "desc=\"{}\" key=\"{}\" input=\"{}\"", desc,
-								input.getKey().trim(), input);
-						descInputEntry.put(desc, input.getKey().trim());
-					}
-				} else {
-					logger.warn("parsing src_desc->input", "input=\"{}\"", input);
-					throw new InvalidValueConfigurationException("invalid value specified for " + input.getKey());
-
+			Map<Object, String> descInputEntry = new HashMap<>();
+			Map<String, Object> srcDesc = sourceConfig.getSrcDesc();
+			try {
+				for (Entry<String, Object> input : srcDesc.entrySet()) {
+					Object descriptorNode = input.getValue();
+					DescriptorParser parser = DescriptorParserFactory.getDescriptorParser(descriptorNode);
+					/*
+				 * @formatter:off
+				 * {{entity-name=entityNameValue, topic=topic1, partition=part1}, input1}
+				 * {some-value, input2}
+				 * @formatter:on
+				 */
+					Map<Object, String> tempDescInputEntry = parser.parseDescriptor(input.getKey(), descriptorNode);
+					descInputEntry.putAll(tempDescInputEntry);
 				}
+			} catch (IllegalArgumentException ex) {
+				throw new InvalidValueConfigurationException(ex.getMessage());
 			}
 			return descInputEntry;
 		}

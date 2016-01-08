@@ -35,37 +35,43 @@ public final class SinkConfigReader {
 		logger.info("sink build phase", "reading sink config");
 
 		final SinkConfig sinkConfig = new SinkConfig();
+		try {
 
-		final String name = jsonHelper.getRequiredStringProperty(sinkNode, SinkConfigConstants.NAME);
-		final String description = jsonHelper.getRequiredStringProperty(sinkNode, SinkConfigConstants.DESCRIPTION);
-		final JsonNode channelDescArray = jsonHelper.getRequiredArrayNode(sinkNode, SinkConfigConstants.CHANNEL_DESC);
-		logger.info("sink build phase", "channelDescArray=\"{}\"", channelDescArray);
-		final Collection<String> channelDescs = new HashSet<>();
-		for (JsonNode channelDesc : channelDescArray) {
-			if (channelDesc.isTextual()) {
-				channelDescs.add(channelDesc.getTextValue());
-			} else {
-				logger.alert(ALERT_TYPE.ADAPTOR_FAILED_TO_START, ALERT_CAUSE.INVALID_ADAPTOR_CONFIGURATION,
-						ALERT_SEVERITY.BLOCKER, "{} param must be specified", SinkConfigConstants.CHANNEL_DESC);
-				throw new InvalidDataTypeConfigurationException(SinkConfigConstants.CHANNEL_DESC, "text node");
+			final String name = jsonHelper.getRequiredStringProperty(sinkNode, SinkConfigConstants.NAME);
+			final String description = jsonHelper.getRequiredStringProperty(sinkNode, SinkConfigConstants.DESCRIPTION);
+			final JsonNode channelDescArray = jsonHelper.getRequiredArrayNode(sinkNode,
+					SinkConfigConstants.CHANNEL_DESC);
+			logger.info("sink build phase", "channelDescArray=\"{}\"", channelDescArray);
+			final Collection<String> channelDescs = new HashSet<>();
+			for (JsonNode channelDesc : channelDescArray) {
+				if (channelDesc.isTextual()) {
+					channelDescs.add(channelDesc.getTextValue());
+				} else {
+					logger.alert(ALERT_TYPE.ADAPTOR_FAILED_TO_START, ALERT_CAUSE.INVALID_ADAPTOR_CONFIGURATION,
+							ALERT_SEVERITY.BLOCKER, "{} param must be specified", SinkConfigConstants.CHANNEL_DESC);
+					throw new InvalidDataTypeConfigurationException(SinkConfigConstants.CHANNEL_DESC, "text node");
+				}
 			}
-		}
 
-		sinkConfig.setName(name);
-		sinkConfig.setDescription(description);
-		sinkConfig.setChannelDescs(channelDescs);
+			sinkConfig.setName(name);
+			sinkConfig.setDescription(description);
+			sinkConfig.setChannelDescs(channelDescs);
 
-		final JsonNode handlerNodeArray = jsonHelper.getRequiredArrayNode(sinkNode, SinkConfigConstants.DATA_HANDLERS);
+			final JsonNode handlerNodeArray = jsonHelper.getRequiredArrayNode(sinkNode,
+					SinkConfigConstants.DATA_HANDLERS);
 
-		initHandlerArray(sinkConfig);
-		for (final JsonNode handlerNode : handlerNodeArray) {
-			final HandlerConfig handlerConfig = handlerConfigReader.readHandlerConfig(handlerNode);
-			/*
-			 * Set a unique name for the handler by prefixing it with sink name.
-			 * DataChannel needs to know unique consumers.
-			 */
-			handlerConfig.setName(name + "-" + handlerConfig.getName());
-			sinkConfig.getHandlerConfigs().add(handlerConfig);
+			initHandlerArray(sinkConfig);
+			for (final JsonNode handlerNode : handlerNodeArray) {
+				final HandlerConfig handlerConfig = handlerConfigReader.readHandlerConfig(handlerNode);
+				/*
+				 * Set a unique name for the handler by prefixing it with sink
+				 * name. DataChannel needs to know unique consumers.
+				 */
+				handlerConfig.setName(name + "-" + handlerConfig.getName());
+				sinkConfig.getHandlerConfigs().add(handlerConfig);
+			}
+		} catch (IllegalArgumentException ex) {
+			throw new AdaptorConfigurationException(ex);
 		}
 		return sinkConfig;
 	}

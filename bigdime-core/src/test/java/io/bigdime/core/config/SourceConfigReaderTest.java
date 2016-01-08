@@ -4,6 +4,7 @@
 package io.bigdime.core.config;
 
 import java.io.IOException;
+import java.util.Map;
 
 import org.codehaus.jackson.JsonNode;
 import org.codehaus.jackson.JsonProcessingException;
@@ -16,7 +17,6 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import io.bigdime.core.AdaptorConfigurationException;
-import io.bigdime.core.InvalidDataTypeConfigurationException;
 import io.bigdime.core.RequiredParameterMissingConfigurationException;
 import io.bigdime.core.commons.JsonHelper;
 
@@ -61,13 +61,19 @@ public class SourceConfigReaderTest extends AbstractTestNGSpringContextTests {
 	 * @throws JsonProcessingException
 	 * @throws IOException
 	 */
-	@Test(expectedExceptions = InvalidDataTypeConfigurationException.class, expectedExceptionsMessageRegExp = "src-desc must be of text node")
+	@SuppressWarnings("unchecked")
+	@Test
 	public void testReadSourceWithSrcDescAsNotNode()
 			throws AdaptorConfigurationException, JsonProcessingException, IOException {
 		String jsonString = "{\"src-desc\" : {\"input1\" : {\"x\":\"y\"}},\"name\" : \"source-name\",\"description\" : \"source description\", \"source-type\" : \"file or mysql or oracle or kafka\",\"data-handlers\": []}";
 		ObjectMapper mapper = new ObjectMapper();
 		JsonNode actualObj = mapper.readTree(jsonString);
-		sourceConfigReader.readSourceConfig(actualObj);
+		SourceConfig sourceConfig = sourceConfigReader.readSourceConfig(actualObj);
+		Assert.assertNotNull(sourceConfig);
+		Assert.assertEquals(sourceConfig.getSrcDesc().size(), 1);
+		Assert.assertNotNull(sourceConfig.getSrcDesc().get("input1"));
+		Assert.assertSame(sourceConfig.getSrcDesc().get("input1").getClass(), java.util.HashMap.class);
+		Assert.assertEquals(((Map<String, Object>) sourceConfig.getSrcDesc().get("input1")).get("x"), "y");
 	}
 
 	@Test
@@ -78,6 +84,12 @@ public class SourceConfigReaderTest extends AbstractTestNGSpringContextTests {
 		JsonNode actualObj = mapper.readTree(jsonString);
 		SourceConfig sourceConfig = sourceConfigReader.readSourceConfig(actualObj);
 		Assert.assertEquals(sourceConfig.getHandlerConfigs().size(), 1);
+
+		Assert.assertEquals(sourceConfig.getSrcDesc().size(), 1);
+		Assert.assertNotNull(sourceConfig.getSrcDesc().get("input1"));
+		Assert.assertSame(sourceConfig.getSrcDesc().get("input1").getClass(), String.class);
+		System.out.println(sourceConfig.getSrcDesc());
+		Assert.assertEquals((sourceConfig.getSrcDesc().get("input1")), "x:y");
 	}
 
 }

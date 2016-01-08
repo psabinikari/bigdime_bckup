@@ -1,0 +1,229 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+<style>
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+blockquote {
+    margin: 0;
+    padding: 0;
+}
+body {
+    font-family: "Helvetica Neue", Helvetica, "Hiragino Sans GB", Arial, sans-serif;
+    font-size: 13px;
+    line-height: 18px;
+    color: #737373;
+    background-color: white;
+    margin: 10px 13px 10px 13px;
+}
+table {
+	margin: 10px 0 15px 0;
+	border-collapse: collapse;
+}
+td,th {	
+	border: 1px solid #ddd;
+	padding: 3px 10px;
+}
+th {
+	padding: 5px 10px;	
+}
+
+a {
+    color: #0069d6;
+}
+a:hover {
+    color: #0050a3;
+    text-decoration: none;
+}
+a img {
+    border: none;
+}
+p {
+    margin-bottom: 9px;
+}
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    color: #404040;
+    line-height: 36px;
+}
+h1 {
+    margin-bottom: 18px;
+    font-size: 30px;
+}
+h2 {
+    font-size: 24px;
+}
+h3 {
+    font-size: 18px;
+}
+h4 {
+    font-size: 16px;
+}
+h5 {
+    font-size: 14px;
+}
+h6 {
+    font-size: 13px;
+}
+hr {
+    margin: 0 0 19px;
+    border: 0;
+    border-bottom: 1px solid #ccc;
+}
+blockquote {
+    padding: 13px 13px 21px 15px;
+    margin-bottom: 18px;
+    font-family:georgia,serif;
+    font-style: italic;
+}
+blockquote:before {
+    content:"\201C";
+    font-size:40px;
+    margin-left:-10px;
+    font-family:georgia,serif;
+    color:#eee;
+}
+blockquote p {
+    font-size: 14px;
+    font-weight: 300;
+    line-height: 18px;
+    margin-bottom: 0;
+    font-style: italic;
+}
+code, pre {
+    font-family: Monaco, Andale Mono, Courier New, monospace;
+}
+code {
+    background-color: #fee9cc;
+    color: rgba(0, 0, 0, 0.75);
+    padding: 1px 3px;
+    font-size: 12px;
+    -webkit-border-radius: 3px;
+    -moz-border-radius: 3px;
+    border-radius: 3px;
+}
+pre {
+    display: block;
+    padding: 14px;
+    margin: 0 0 18px;
+    line-height: 16px;
+    font-size: 11px;
+    border: 1px solid #d9d9d9;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+pre code {
+    background-color: #fff;
+    color:#737373;
+    font-size: 11px;
+    padding: 0;
+}
+sup {
+    font-size: 0.83em;
+    vertical-align: super;
+    line-height: 0;
+}
+* {
+	-webkit-print-color-adjust: exact;
+}
+@media screen and (min-width: 914px) {
+    body {
+        width: 854px;
+        margin:10px auto;
+    }
+}
+@media print {
+	body,code,pre code,h1,h2,h3,h4,h5,h6 {
+		color: black;
+	}
+	table, pre {
+		page-break-inside: avoid;
+	}
+}
+</style>
+<title>About BigDime</title>
+
+</head>
+<body>
+<h1>About BigDime</h1>
+
+<h2>Why BigDime?</h2>
+
+<p> At StubHub, there was a need to ingest data at scale into our Big Data Ecosystems to support our products, business and data-driven culture. In order to find a right toolset/product to fulfill out data ingestion needs, conducted our research and POCs. Part of research, upon finding out gaps and limitations from existing data ingestion tools/products, a concept of a tool arose 
+to close the gaps, to support extensibility, to keep up with changes in source data sets and handle the data ingestion gracefully without manual intervention, to increase the manageability of tool, to validate the data upon ingestion, to monitor the alerts, etc. As we design the framework, we felt having the framework/tool open sourced would help community to alleviate some pain points around big data ingestion. BigDime is an evolving tool with contribution from StubHub as well as from the Open Source Community. 
+</p>
+
+<h3>Features</h3>
+
+<h4><img src="images/servers1.png" alt="image" /> Infrastructure</h4>
+
+<ul>
+<li><strong>Standalone</strong>: Each adaptor runs as a standalone core java application. Starting and stopping an adaptor does not interfere with the functioning of another adaptor.</li>
+<li><strong>Small infrastructure footprint</strong>: A BigDime adaptor has very less overheads, thus it can be tuned to work with as low as 2GB heap size in most of the cases.</li>
+</ul>
+
+
+<h4><img src="images/dashboard.png" alt="image" /> Manageability</h4>
+
+<ul>
+<li><strong>High Availability &amp; Discovery</strong>: By having all adaptors become part of Zookeeper groups, a failure in any one of the adaptors that was elected as a leader, results in other adaptors become inactive. The new leader would be taking over processing of the failed service. All adapters will be registered to the Zookeeper  which helps to locate the particular adapter(active) and manage the adapters.</li>
+<li><strong>Fault Tolerence</strong>: In case of exceptions, adaptor pulls itself back to the last stable point and retries operations. If the system comes to a normal state after the retries, everything continues to run as if nothing happened. If the retries can’t bring the system to the normal state, manual attention maybe needed.</li>
+<li><strong>Self Healing</strong>: What happens if adaptor is running and someone pulls the plug. The adaptor will resume from where it left off, or will cleanup what it did in the previous run and restart the  ingestion process without any manual intervention.</li>
+<li><strong>Data Offset Management</strong>: BigDime maintains offsets in its internal storage, helps it to heal itself and is also useful in troubleshooting.</li>
+<li><strong>Monitor &amp; Alert</strong>: Alerting library has been designed to ensure that the log messages are consistent and helpful in troubleshooting. Adaptor is monitored to ensure that respective stakeholders are notified (in development) in case of an exception or error condition.</li>
+<li><strong>Management Console</strong>: Management console provides a user interface for visualizing the alerts captured by the monitoring and alerts framework.</li>
+<li><strong>Metadata Management Service</strong>: Metadata needed by an adapter is managed by a metadata management module. Metadata API allows adapters to retrieve and update metadata information about any entity. Main objective of this service is to allows adaptors to adapt to certain runtime changes, e.g. if the data format from the input size upgrades from v1 to v2.</li>
+</ul>
+
+
+<h4><img src="images/chain1.png" alt="image" /> Data Validation</h4>
+
+<ul>
+<li><strong>Data Validation Service</strong>s
+
+<ul>
+<li><strong>Data Validation</strong>: BigDime comes with few out-of-the-box Data Validators to validate the data being ingested and alert when validation fails.</li>
+<li><strong>Custom Data Validators</strong>: BigDime allows injecting custom validators. Visit technical documentation on how to write a custom
+validator.</li>
+</ul>
+</li>
+</ul>
+
+
+<h4><img src="images/Serialization-128.png" alt="image" /> Customizable</h4>
+
+<ul>
+<li><strong>Supports multiple data sources &amp; sinks</strong>: BigDime supports ingesting data from Kafka, File and SQL right out of the box. While support for other data sources are being added, creating your own handler to work with other type of datasource is an option. BigDime supports ingesting data to HDFS. While support for other sinks is being added, creating your own handler to work with other type of sink is an option.</li>
+<li><strong>Customizable Handler &amp; its chain</strong>: A handler can be added anywhere in the chain for additional processing. Visit technical documentation on how to write a custom handler.</li>
+</ul>
+
+
+<h4><img src="images/small140.png" alt="image" /> Robustness</h4>
+
+<ul>
+<li><strong>Low reources consumption with minimum maintenance</strong>:</li>
+<li><strong>Shorter learning curve</strong>:</li>
+</ul>
+
+
+<h4><img src="images/dashboard.png" alt="image" /> Log Management</h4>
+
+<ul>
+<li><strong>Log Service</strong>: BigDime offers AlertLoggerFactory as a service provider interface and comes with two implementations of it. One implementation (io.BigDime.alert.impl.Log4jLoggerFactory) logs using slf4j-log4j and another implementation (io.BigDime.alert.multiple.impl.MultipleLoggerFactory) logs using slf4j-log4j and a custom Hbase logger. Contributors are encouraged to provide their own implementations and plug it in.</li>
+<li><strong>Searchable Logs</strong>: If BigDime is used with it’s Hbase logger, the management console can be used to view and search alerts. The management console works as a single place to view the logs for all the adaptors,
+provided that Hbase logger is used.</li>
+</ul>
+
+</body>
+</html>

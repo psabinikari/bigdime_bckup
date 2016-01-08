@@ -1,0 +1,135 @@
+{
+    "name": "bigdime-file-adaptor",
+    "type": "batch",
+    "cron-expression" : "0/30 * * * * ? *",
+    "auto-start" : "true",
+    "namespace": "com.example",
+    "description": "adaptor to ingest the data from bigdime-file into hdfs.",
+    "source": {
+        "name": "bigdime-file-source",
+        "description": "source description",
+        "source-type": "file",
+        "src-desc": {
+            "input1" : "entity1:file_name_1_prefix.*",
+            "input2" : "entity2:file_name_2_prefix.*",
+            "input3" : "entity3:file_name_3_prefix.*",
+            "input4" : "entity4:file_name_4_prefix.*"
+        },
+        "data-handlers": [
+            {
+                "name": "file-data-reader",
+                "description": "read data from files specified with src-desc field",
+                "handler-class": "io.bigdime.handler.file.FileInputStreamHandler",
+                "properties": {
+                    "base-path": "${file_base_path}",
+                    "buffer-size": "${file_buffer_size}",
+                    "preserve-base-path" : "${preserve_base_path}",
+                    "preserve-relative-path" : "${preserve_relative_path}"
+                }
+            },
+            {
+                "name": "partition-name-parser",
+                "description": "parse the partition names from the file name",
+                "handler-class": "io.bigdime.handler.file.PartitionParserHandler",
+                "properties": {
+                    "regex": "${partition_regex}",
+                    "partition-names" : "${partition_names}",
+                    "header-name": "sourceFileName",
+                    "truncate-characters" : "-",
+                    "map" : "7937_:US",
+                    "channel-map" : "input1:channel1,input2:channel2,input3:channel3,input4:channel4"
+                }
+            }
+        ]
+    },
+    "channel": [
+        {
+            "name": "channel1",
+            "description" : "channel for bigdime-file data",
+            "channel-class": "io.bigdime.core.channel.MemoryChannel",
+            "properties": {
+                "print-stats" : "${print_channel_stats}",
+                "print-stats-duration-in-seconds" : "${print_stats_duration_in_seconds}",
+                "channel-capacity" : "${channel_capacity}"
+            }
+        },
+        {
+            "name": "channel2",
+            "description" : "channel for bigdime-file data",
+            "channel-class": "io.bigdime.core.channel.MemoryChannel",
+            "properties": {
+                "print-stats" : "${print_channel_stats}",
+                "print-stats-duration-in-seconds" : "${print_stats_duration_in_seconds}",
+                "channel-capacity" : "${channel_capacity}"
+            }
+        },
+        {
+            "name": "channel3",
+            "description" : "channel for bigdime-file data",
+            "channel-class": "io.bigdime.core.channel.MemoryChannel",
+            "properties": {
+                "print-stats" : "${print_channel_stats}",
+                "print-stats-duration-in-seconds" : "${print_stats_duration_in_seconds}",
+                "channel-capacity" : "${channel_capacity}"
+            }
+        },
+        {
+            "name": "channel4",
+            "description" : "channel for bigdime-file data",
+            "channel-class": "io.bigdime.core.channel.MemoryChannel",
+            "properties": {
+                "print-stats" : "${print_channel_stats}",
+                "print-stats-duration-in-seconds" : "${print_stats_duration_in_seconds}",
+                "channel-capacity" : "${channel_capacity}"
+            }
+        }
+    ],
+    "sink": [
+        {
+            "name": "sink for bigdime-file data adaptor",
+            "description": "hdfs sink for bigdime-file data adaptor",
+            "channel-desc": ["channel1", "channel2", "channel3", "channel4"],
+            "data-handlers": [
+                {
+                    "name": "memory-channel-reader",
+                    "description": "read data from channels",
+                    "handler-class": "io.bigdime.core.handler.MemoryChannelInputHandler",
+                    "properties": {
+                        "batchSize" : "128"
+                    }
+                },
+                {
+                    "name": "hfds sink for bigdime-file data adaptor",
+                    "description": "hfds sink for bigdime-file data adaptor",
+                    "handler-class": "io.bigdime.handler.webhdfs.WebHDFSWriterHandler",
+                    "properties": {
+                        "hostNames"           : "${hdfs_hosts}",
+                        "port"                : "${hdfs_port}",
+                        "hdfsFileNamePrefix"        : "user-",
+                        "hdfsFileNameExtension"        : ".txt",
+                        "hdfsPath"            : "${hdfs_path}",
+                        "hdfsUser"            : "${hdfs_user}",
+                        "hdfsOverwrite"       : "true",
+                        "hdfsPermissions"     : "777"
+                    }
+                },
+                {
+                    "name": "data-validation-handler",
+                    "description": "data-validation-handler for hdfs sink",
+                    "handler-class": "io.bigdime.core.handler.DataValidationHandler",
+                    "properties": {
+                        "validation-type" : "${validation_type}"
+                    }
+                },
+                {
+                    "name": "file-archiver",
+                    "description": "file archiver hdfs sink",
+                    "handler-class": "io.bigdime.handler.file.FileArchiveHandler",
+                    "properties": {
+                        "archive-path" : "${archive_path}"
+                    }
+                }
+            ]
+        }
+    ]
+}

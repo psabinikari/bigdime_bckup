@@ -1,0 +1,563 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+<style>
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+blockquote {
+    margin: 0;
+    padding: 0;
+}
+body {
+    font-family: "Helvetica Neue", Helvetica, "Hiragino Sans GB", Arial, sans-serif;
+    font-size: 13px;
+    line-height: 18px;
+    color: #737373;
+    background-color: white;
+    margin: 10px 13px 10px 13px;
+}
+table {
+	margin: 10px 0 15px 0;
+	border-collapse: collapse;
+}
+td,th {	
+	border: 1px solid #ddd;
+	padding: 3px 10px;
+}
+th {
+	padding: 5px 10px;	
+}
+
+a {
+    color: #0069d6;
+}
+a:hover {
+    color: #0050a3;
+    text-decoration: none;
+}
+a img {
+    border: none;
+}
+p {
+    margin-bottom: 9px;
+}
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    color: #404040;
+    line-height: 36px;
+}
+h1 {
+    margin-bottom: 18px;
+    font-size: 30px;
+}
+h2 {
+    font-size: 24px;
+}
+h3 {
+    font-size: 18px;
+}
+h4 {
+    font-size: 16px;
+}
+h5 {
+    font-size: 14px;
+}
+h6 {
+    font-size: 13px;
+}
+hr {
+    margin: 0 0 19px;
+    border: 0;
+    border-bottom: 1px solid #ccc;
+}
+blockquote {
+    padding: 13px 13px 21px 15px;
+    margin-bottom: 18px;
+    font-family:georgia,serif;
+    font-style: italic;
+}
+blockquote:before {
+    content:"\201C";
+    font-size:40px;
+    margin-left:-10px;
+    font-family:georgia,serif;
+    color:#eee;
+}
+blockquote p {
+    font-size: 14px;
+    font-weight: 300;
+    line-height: 18px;
+    margin-bottom: 0;
+    font-style: italic;
+}
+code, pre {
+    font-family: Monaco, Andale Mono, Courier New, monospace;
+}
+code {
+    background-color: #fee9cc;
+    color: rgba(0, 0, 0, 0.75);
+    padding: 1px 3px;
+    font-size: 12px;
+    -webkit-border-radius: 3px;
+    -moz-border-radius: 3px;
+    border-radius: 3px;
+}
+pre {
+    display: block;
+    padding: 14px;
+    margin: 0 0 18px;
+    line-height: 16px;
+    font-size: 11px;
+    border: 1px solid #d9d9d9;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+pre code {
+    background-color: #fff;
+    color:#737373;
+    font-size: 11px;
+    padding: 0;
+}
+sup {
+    font-size: 0.83em;
+    vertical-align: super;
+    line-height: 0;
+}
+* {
+	-webkit-print-color-adjust: exact;
+}
+@media screen and (min-width: 914px) {
+    body {
+        width: 854px;
+        margin:10px auto;
+    }
+}
+@media print {
+	body,code,pre code,h1,h2,h3,h4,h5,h6 {
+		color: black;
+	}
+	table, pre {
+		page-break-inside: avoid;
+	}
+}
+</style>
+<title>Architecture</title>
+
+</head>
+<body>
+<h1>Architecture</h1>
+
+<h2>How It Works?</h2>
+
+<p>Understanding the components and flow would be best way to get to know BigDime better.</p>
+
+<p><img src="images/bigdime_highlevel_details.png" title="High Level Details" alt="highlevel" /></p>
+
+<p>Drilling down further to understand flow, how BigDime works! Lets look under the hood.</p>
+
+<p><img src="images/bigdime_overall_flow.jpg" alt="overall flow	" /></p>
+
+
+<h3>What is an Adaptor?</h3>
+
+<p>An Adaptor is single unit of work horse to ingest data from a source to BigData. The adaptor consists of Source, Channel and Sink modules. Source and Sink modules are composed with handlers in sequence. Each Handler is designed to do a single simple task and hand over to next handler. Channel is a queue to stage the data to be consumed by Sink. Channel gives freedom for Source and Sink to work on its own pace.</p>
+
+<p>The adaptor can be configured, started, and stopped. Several Adaptors could run concurrently at various schedules within BigDime Framework.</p>
+
+<h4>Adaptor Flow</h4>
+
+<p><img src="images/bigdime_adaptor_flow.jpg" alt="image" /></p>
+
+<h4>Adaptor Configuration</h4>
+
+<h5>Rules</h5>
+
+<ul>
+<li><p>Configuration</p>
+
+<ul>
+<li><strong>Source</strong>
+
+<ul>
+<li>There is only one Source element per adaptor and it's defined as a single node element.</li>
+<li>A Source may be configured to read from one or more channels.</li>
+<li>"<em>src-desc</em>" parameter under Source defines the input parameters.</li>
+</ul>
+</li>
+<li><strong>Channel</strong>
+
+<ul>
+<li>Multiple instances of a channel may be configured by specifying the concurrency parameter.</li>
+</ul>
+</li>
+<li><strong>Sink</strong>
+
+<ul>
+<li>Sink node is an array element. Each sink node may use different set of handlers.
+
+<ul>
+<li>A sink may be configured to read from one or more channels.
+
+<ul>
+<li>Say, <em>order</em> and <em>transactions</em> are two different input descriptors. <em>Orders</em> go to Channel#1 and <em>transactions</em> go to Channel#2. We may want to load all the data(<em>orders</em> and <em>transactions</em> in HDFS and only <em>orders</em> in Hbase).</li>
+</ul>
+</li>
+<li>More than one Sink nodes may be configured to read data from same Channel. - Replication Channel selector functionality
+HDFS and HBase sink may want to process the data from same channel.</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>Implementation</strong></p>
+
+<ul>
+<li>Multiple instances of source may be running depends on number of input descriptors.</li>
+<li>One input can define multiple descriptors, say <em>input1: "topic1:par1, par2”</em> defines two descriptors, <em>topic1:par1</em> and <em>topica:par2</em>.</li>
+<li>One source instance is run per input descriptor. If there are 10 descriptors, there will be 10 source instances.</li>
+<li>One source instance may feed one and only one channel.</li>
+<li>Multiple source instances may feed the same channel.</li>
+<li>Multiple instances of a channel may be run, depending on concurrency parameter.</li>
+<li>At least one sink instance will run to receive data from one channel</li>
+<li>Multiple Sinks can read from same Channel, so <em>Sink1</em> and <em>Sink2</em> can read from I, this provides replicating channel functionality.</li>
+</ul>
+</li>
+</ul>
+
+
+<h5>Schema</h5>
+
+<p><code><CDATA>
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "id": "http://io.bigdime.adaptor",
+  "type": "object",
+  "properties": {
+    "name": {
+      "id": "http://io.bigdime.adaptor/name",
+      "type": "string"
+    },
+    "namespace": {
+      "id": "http://io.bigdime.adaptor/namespace",
+      "type": "string"
+    },
+    "description": {
+      "id": "http://io.bigdime.adaptor/description",
+      "type": "string"
+    },
+    "source": {
+      "id": "http://io.bigdime.adaptor/source",
+      "type": "object",
+      "properties": {
+        "name": {
+          "id": "http://io.bigdime.adaptor/source/name",
+          "type": "string"
+        },
+        "description": {
+          "id": "http://io.bigdime.adaptor/source/description",
+          "type": "string"
+        },
+        "src-desc": {
+          "id": "http://io.bigdime.adaptor/source/src-desc",
+          "type": "object",
+          "properties": {
+            "input1": {
+              "id": "http://io.bigdime.adaptor/source/src-desc/input1",
+              "type": "string"
+            },
+            "input2": {
+              "id": "http://io.bigdime.adaptor/source/src-desc/input2",
+              "type": "string"
+            },
+            "input3": {
+              "id": "http://io.bigdime.adaptor/source/src-desc/input3",
+              "type": "string"
+            }
+          }
+        },
+        "data-handlers": {
+          "id": "http://io.bigdime.adaptor/source/data-handlers",
+          "type": "array",
+          "items": {
+            "id": "http://io.bigdime.adaptor/source/data-handlers/2",
+            "type": "object",
+            "properties": {
+              "name": {
+                "id": "http://io.bigdime.adaptor/source/data-handlers/2/name",
+                "type": "string"
+              },
+              "description": {
+                "id": "http://io.bigdime.adaptor/source/data-handlers/2/description",
+                "type": "string"
+              },
+              "handler-class": {
+                "id": "http://io.bigdime.adaptor/source/data-handlers/2/handler-class",
+                "type": "string"
+              },
+              "properties": {
+                "id": "http://io.bigdime.adaptor/source/data-handlers/2/properties",
+                "type": "object",
+                "properties": {
+                  "channel-map": {
+                    "id": "http://io.bigdime.adaptor/source/data-handlers/2/properties/channel-map",
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "channel": {
+      "id": "http://io.bigdime.adaptor/channel",
+      "type": "array",
+      "items": {
+        "id": "http://io.bigdime.adaptor/channel/1",
+        "type": "object",
+        "properties": {
+          "name": {
+            "id": "http://io.bigdime.adaptor/channel/1/name",
+            "type": "string"
+          },
+          "description": {
+            "id": "http://io.bigdime.adaptor/channel/1/description",
+            "type": "string"
+          },
+          "channel-class": {
+            "id": "http://io.bigdime.adaptor/channel/1/channel-class",
+            "type": "string"
+          },
+          "properties": {
+            "id": "http://io.bigdime.adaptor/channel/1/properties",
+            "type": "object",
+            "properties": {
+              "broker-hosts": {
+                "id": "http://io.bigdime.adaptor/channel/1/properties/broker-hosts",
+                "type": "string"
+              },
+              "offset-data-dir": {
+                "id": "http://io.bigdime.adaptor/channel/1/properties/offset-data-dir",
+                "type": "string"
+              },
+              "topic": {
+                "id": "http://io.bigdime.adaptor/channel/1/properties/topic",
+                "type": "string"
+              },
+              "concurrency": {
+                "id": "http://io.bigdime.adaptor/channel/1/properties/concurrency",
+                "type": "integer"
+              }
+            }
+          }
+        }
+      }
+    },
+    "sink": {
+      "id": "http://io.bigdime.adaptor/sink",
+      "type": "array",
+      "items": {
+        "id": "http://io.bigdime.adaptor/sink/1",
+        "type": "object",
+        "properties": {
+          "name": {
+            "id": "http://io.bigdime.adaptor/sink/1/name",
+            "type": "string"
+          },
+          "data-handlers": {
+            "id": "http://io.bigdime.adaptor/sink/1/data-handlers",
+            "type": "array",
+            "items": {
+              "id": "http://io.bigdime.adaptor/sink/1/data-handlers/2",
+              "type": "object",
+              "properties": {
+                "name": {
+                  "id": "http://io.bigdime.adaptor/sink/1/data-handlers/2/name",
+                  "type": "string"
+                },
+                "handler-class": {
+                  "id": "http://io.bigdime.adaptor/sink/1/data-handlers/2/handler-class",
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "name",
+    "namespace",
+    "description",
+    "source",
+    "channel",
+    "sink"
+  ]
+}
+<CDATA></code></p>
+
+<h4>Adaptor Context</h4>
+
+<p>The adaptor sets basic context when it's instantiated. Context is loaded once when adaptor started and provides information such as source, sink, handeler chain, properties to adaptor that's running.</p>
+
+<h4>Adaptor Runtime Information Management (RTIM)</h4>
+
+<p>Runtime Information Management keeps track of  adaptor execution by storing the information that ensures the continous data ingestion. RTI helps maintain an offset information of data source entities and its incremental bookmark to recover in case of failure. It includes last adaptor run date-time, current incremental value, file names,
+recovery data etc..</p>
+
+<h4>Source</h4>
+
+<p>Source's responsibility is to retrieve the data from adaptor's data source, perform certain operations on it by passing the data through a set of handlers and then and submit it to the Channel. In BigDime, the Source system is built by stitching various handlers together. First handler in the source typically reads data from external data source, e.g. Kafka topic, RDBMS, File etc. and hands over the next handler(s) to perform any cleansing, standardizing and/or transforming data such as removing null values, decoding Avro schema,etc. befor hands over to Channel.</p>
+
+<h4>Channel</h4>
+
+<p>Channels are used to store the until sink is able to consume it. The storage can be persistent or non-persistent depending on the which Channel implementation is used.</p>
+
+<h5>Type of channels</h5>
+
+<ul>
+<li><p><strong>Persistent Channels</strong>: Persistent channels store the data on the disk and provide a way survive a system crash. Since the data is stored to and read from disk, it impacts the overall performance of the system as compared to when dealing with non-persistent channels.</p></li>
+<li><p><strong>Non-persistent Channels</strong>: Non-persistent channels store the data in memory and the data is lost if the system crashes. Since the data is stored to and read from memory, it's faster as compared to persistent channels.</p></li>
+</ul>
+
+
+<h5>Implementations</h5>
+
+<p>This BigDime implementation is using <strong>Memory Channel</strong>. However, Kafka can also be used as a Channel.</p>
+
+<p><strong>Memory Channel</strong>: Memory channel is a non-persistent channel and uses local heap to store data.</p>
+
+<h5>Data Structure for Memory Channel</h5>
+
+<p>MemoryChannel in bigdime uses ArrayList as backing data structure, in order to support replicating and multiplexing functionalities.</p>
+
+<h5>Channel Operations</h5>
+
+<ul>
+<li><strong>Take</strong>: Take operation allows consumers to consume one or more events from the channel.</li>
+<li><strong>Put</strong>: Put operation allows producers to place events on the channel.</li>
+<li><strong>Statistics</strong>: Channels maintain how many events have been put, taken and are in channel at present.</li>
+</ul>
+
+
+<h5>Known Limitations:</h5>
+
+<ul>
+<li>Transactional Boundry is not currently implemented.</li>
+<li>At edge case, There may be potential error scenorio when channel memory overflows or when adaptor improperly configured. See User GUide</li>
+<li>All data in the channel is transient and upon restarting Adaptor, data may be read from source once again.</li>
+</ul>
+
+
+<h4>Sink</h4>
+
+<p>Sink consumes data from Channel and writes it to data store, e.g. HDFS. Sink consists chain of handlers to perform operations such as writing into big data and validate the data upon sinking.</p>
+
+<h4>Handler</h4>
+
+<p>A handler is out there to handle one and only one situation, be it reading data from a file, or parsing a file or translating data from one format to another etc. A user can implement his/her own logic as a handler. Here are few examples:</p>
+
+<ul>
+<li><strong>SQLHandler</strong>: A handler that reads data from a relational database.</li>
+<li><strong>FileReaderHandler</strong>: A handler that reads data from a file on disk.</li>
+<li><strong>KafkaReaderHandler</strong>: A handler that reads data from Kafka channel.</li>
+<li><strong>ValidationHandler</strong>: A handler that validates the input data. See more in validation section and user guide.</li>
+<li><strong>WebHDFSSinkHandler</strong>: A handler that stores the given data to HDFS. BigDime is using WebHDFS API.</li>
+</ul>
+
+<p><img src="images/bigdime_handler_manager.jpg" alt="handler manager" /></p>
+
+
+<h3>Meta Data Management</h3>
+
+<p>Metadata management module stores metadata of an adaptor that includes but not limited to schema of source, target and its data types. It allows the adaptor to adapt to oncoming changes from source at runtime. for example</p>
+
+<ul>
+<li>Change in column order.</li>
+<li>Increase in column count.</li>
+</ul>
+
+
+<p>Metadata API attempts to overcome the problem by storing the semantics of each meta data element of any schema.</p>
+
+<p><strong>Overview of Metadata Management</strong></p>
+<p><img src="images/bigdime_metadata_overview.png" alt="meta data overview" /></p>
+
+<p><strong>Highlevel Metadata Concurrency Flow</strong></p>
+<p><img src="images/bigdime_concurrency_flow_diagram.png" alt="concurrency flow" /></p>
+
+
+
+<h3>Data Validation Service</h3>
+
+<p>BigDime comes with few out-of-the-box data Validations to validate the data being ingested and alert when validation fails.</p>
+
+<p>Adaptor can have any number validation handlers(need to custom written) sequnenced in both Source as well as Sink. The Validation Handler contains collection of validators.  with that said, new custom validatior can be created to meet your business needs. Validation Handler can consist of several Data Validators, which could be extended from framework to meet your business needs. Configure customized validations by adding validation type value under properties in data-validation-handler.
+Validating data between source and target by types of validators based on data source(file, sql, etc). Also, raising alerts when validations fail.</p>
+
+<h4>Type of validation:</h4>
+
+<h5>Data Validation:</h5>
+
+<ul>
+<li><strong>Record count validator for streaming data</strong>: Validates the records that the number of records are inserted are same as the number of records in HDFS.</li>
+<li><strong>Raw checksum validator for file data</strong>: This is applicable where the checksum of input file can be compared against the checksum of the file in HDFS. If the adaptor is supposed to manipulate the contents of the file, consider using processed checksum validator instead
+processed checksum validator for file data — This is applicable if you want to validate the ingestion at byte level, the checksum of bytes being inserted is compared against checksum of bytes read back from HDFS</li>
+</ul>
+
+
+<h5>Schema Validation:</h5>
+
+<ul>
+<li><strong>Column count validator for sql/streaming data</strong>: Validates that the number of columns from source are same as number of columns in Hive table</li>
+<li><strong>Column order validator for sql data</strong>: Validates that the order of columns in source is same as the order of columns in Hive table.</li>
+<li><strong>Column type validator for sql data</strong>: Validates that column types in source are same as column types in Hive table.</li>
+</ul>
+
+
+<h4>Hive Table/Partition Creation</h4>
+
+<h5>Design</h5>
+
+<h3>Management Console</h3>
+
+<p>Management Console would provide a one stop shop for all the alerting needs of BigDime. The Management console is seamlessly integrated with the monitoring rest services and single interface can serve mutliple environments such as production, test and dev. It would provide users with a quick view of any alerts that might have occured.</p>
+
+<h4>BigDime Monitoring Service</h4>
+
+<h5>What:</h5>
+
+<p>Monitoring Service provides a rest interface for monitoring needs.It provides rest services to fetch data from the back end persistent store.</p>
+
+<h5>Why:</h5>
+
+<p><strong>Plugability</strong>. The rest  services acts an interface between the backend implementation and Management Console.</p>
+
+<h5>Features:</h5>
+
+<p>Monitoring Service provides services to fetch data in multiple fashions.Application implemtor is could use a default like last x days which is customizable via external properties or the user can make call with the specific time range for a given application.</p>
+
+<h5>Sample Alert &amp; Info Messages</h5>
+
+<p><strong>Below is a sample Alert message</strong></p>
+
+<p><code>2015-08-28 08:35:27,314 priority=ERROR adaptor_name="clickstream-data" alert_severity="BLOCKER" message_context="data reading phase" alert_code="BIG-0001" alert_name="ingestion failed" alert_cause="data validation failed" detail_message="data validation failed, input checksum = #01234567, output checksum = #76543210</code></p>
+
+<p><strong>Below is a sample info message</strong></p>
+
+<p><code>2015-08-28 08:35:28,314 priority=INFO adaptor_name="clickstream-data" message_context="data reading phase" detail_message="read 1048576 bytes for file_001.csv"</code></p>
+</body>
+</html>

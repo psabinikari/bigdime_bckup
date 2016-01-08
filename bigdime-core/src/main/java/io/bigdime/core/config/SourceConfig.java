@@ -11,7 +11,7 @@ public class SourceConfig {
 	private String name;
 	private String description;
 	private LinkedHashSet<HandlerConfig> handlerConfigs;
-	private Map<String, String> srcDesc;
+	private Map<String, Object> srcDesc;
 	private String sourceType;
 
 	public String getName() {
@@ -38,11 +38,11 @@ public class SourceConfig {
 		this.handlerConfigs = handlers;
 	}
 
-	public Map<String, String> getSrcDesc() {
+	public Map<String, Object> getSrcDesc() {
 		return srcDesc;
 	}
 
-	public void setSrcDesc(Map<String, String> srcDesc) {
+	public void setSrcDesc(Map<String, Object> srcDesc) {
 		this.srcDesc = srcDesc;
 	}
 

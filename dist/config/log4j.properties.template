@@ -1,0 +1,19 @@
+log4j.rootLogger=WARN, stdout, file
+
+log4j.appender.stdout=org.apache.log4j.ConsoleAppender
+log4j.appender.stdout.layout=org.apache.log4j.PatternLayout
+# Pattern to output the caller's file name and line number.
+log4j.appender.stdout.layout.ConversionPattern=%d %p Application=file-adaptor.%c{1} Thread=%t %m%n
+
+log4j.appender.file=org.apache.log4j.RollingFileAppender
+log4j.appender.file.File=logs/bigdime.log
+log4j.appender.file.MaxFileSize=100MB
+log4j.appender.file.MaxBackupIndex=50
+log4j.appender.file.layout=org.apache.log4j.PatternLayout
+log4j.appender.file.layout.ConversionPattern=%d %5p file-adaptor.%c{1} Thread=%t - %m%n
+
+log4j.logger.org.hibernate=WARN
+log4j.logger.org.springframework=WARN
+log4j.logger.io.bigdime=INFO
+log4j.logger.io.bigdime.core.handler.DataValidationHandler=INFO
+log4j.logger.org.apache.http=ERROR

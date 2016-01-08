@@ -81,7 +81,7 @@ public class DataSourceFactoryTest extends AbstractTestNGSpringContextTests {
 	@Test
 	public void testGetDataSourceForTopicParitionInputs() throws AdaptorConfigurationException {
 		SourceConfig sourceConfig = new SourceConfig();
-		Map<String, String> srcDescMap = new HashMap<>();
+		Map<String, Object> srcDescMap = new HashMap<>();
 		srcDescMap.put("input1", "topic1:par1,par2,par3");
 		srcDescMap.put("input2", "topic1:par4");
 		srcDescMap.put("input3", "topic2:par1");
@@ -108,10 +108,10 @@ public class DataSourceFactoryTest extends AbstractTestNGSpringContextTests {
 	 * should throw InvalidValueConfigurationException as more than one colons are not allowed in input value.
 	 * @formatter:on
 	 */
-	@Test(expectedExceptions = InvalidValueConfigurationException.class)
+	@Test
 	public void testGetDataSourceForTopicParitionInputsWithMoreThanOneColon() throws AdaptorConfigurationException {
 		SourceConfig sourceConfig = new SourceConfig();
-		Map<String, String> srcDescMap = new HashMap<>();
+		Map<String, Object> srcDescMap = new HashMap<>();
 		srcDescMap.put("input1", "topic1:par1:par2");
 		sourceConfig.setSrcDesc(srcDescMap);
 
@@ -140,7 +140,7 @@ public class DataSourceFactoryTest extends AbstractTestNGSpringContextTests {
 	@Test
 	public void testGetDataSourceForTopicAndBlankParitionInputs() throws AdaptorConfigurationException {
 		SourceConfig sourceConfig = new SourceConfig();
-		Map<String, String> srcDescMap = new HashMap<>();
+		Map<String, Object> srcDescMap = new HashMap<>();
 		srcDescMap.put("input1", "topic1:");
 		sourceConfig.setSrcDesc(srcDescMap);
 
@@ -170,7 +170,7 @@ public class DataSourceFactoryTest extends AbstractTestNGSpringContextTests {
 	@Test
 	public void testGetDataSourceForStringInputs() throws AdaptorConfigurationException {
 		SourceConfig sourceConfig = new SourceConfig();
-		Map<String, String> srcDescMap = new HashMap<>();
+		Map<String, Object> srcDescMap = new HashMap<>();
 		srcDescMap.put("input1", "table1,table2");
 		sourceConfig.setSrcDesc(srcDescMap);
 
@@ -203,7 +203,7 @@ public class DataSourceFactoryTest extends AbstractTestNGSpringContextTests {
 	@Test(expectedExceptions = InvalidValueConfigurationException.class)
 	public void testGetDataSourceWithBlankStringInputs() throws AdaptorConfigurationException {
 		SourceConfig sourceConfig = new SourceConfig();
-		Map<String, String> srcDescMap = new HashMap<>();
+		Map<String, Object> srcDescMap = new HashMap<>();
 		srcDescMap.put("input1", "");
 		sourceConfig.setSrcDesc(srcDescMap);
 

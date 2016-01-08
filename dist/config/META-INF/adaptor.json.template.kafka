@@ -1,0 +1,116 @@
+{
+    "name": "kafka-data-adaptor",
+    "type": "streaming",
+    "cron-expression" : "0/15 * * * * ? *",
+    "auto-start" : "true",
+    "namespace": "com.example",
+    "description": "adaptor to ingest the data from kafka api into hdfs.",
+    "source": {
+        "name": "kafka-api-source",
+        "description": "source description",
+	"source-type": "kakfa",
+        "src-desc": {       
+            "input1" : "topic:partition1",
+            "input2" : "topic:partition2"        
+            },
+        "data-handlers": [
+            {
+                "name": "kafka-data-reader",
+                "description": "read data from partitions specified with src-desc field",
+                "handler-class": "io.bigdime.handler.kafka.KafkaReaderHandler",
+                "properties": {
+                    "brokers": "${kafka_brokers}",
+                    "offset-data-dir": "/tmp",
+                    "messageSize": "20000"
+                }
+            },
+            {
+                "name": "avro-record-handler",
+                "description": "Parse avro record and creates a JsonNode",
+                "handler-class": "io.bigdime.handler.avro.AvroJsonMapperHandler",
+                "properties": {
+                    "buffer_size" : "16384",
+                    "schemaFileName" : "${avro_schema_file_name}",
+                    "messageSize": "20000"
+                 }
+             },
+             {
+	        "name": "hive-json-mapper",
+	        "description": "read a json message and flatten the strutucre using metastore",
+	        "handler-class": "io.bigdime.handler.hive.JsonHiveSchemaMapperHandler",
+	        "properties": {
+	            "messageSize": "20000",
+	            "schemaFileName" :"${hive_schema_file_name}",
+	            "entityName" :"${entity_name}",
+                     "channel-map" : "input1:channel1, input2:channel2"
+	        }
+             }
+        ]
+    },
+    "channel": [
+        {
+            "name": "channel1",
+            "description" : "channel for us kafka data",
+            "channel-class": "io.bigdime.core.channel.MemoryChannel",
+            "properties": {
+                "print-stats" : "true",
+                "batchSize" :"100"
+            }
+        },
+        {
+            "name": "channel2",
+            "description" : "channel for us kafka data",
+            "channel-class": "io.bigdime.core.channel.MemoryChannel",
+            "properties": {
+                "print-stats" : "true",
+                "batchSize" :"100"
+            }
+        }
+    ],
+    "sink": [
+        {
+            "name": "sink for tracking data adaptor",
+            "description": "hdfs sink for tracking data adaptor",
+            "channel-desc": ["channel1", "channel2", "channel3","channel4","channel5","channel6"],
+            "data-handlers": [
+                {
+                    "name": "memory-channel-reader",
+                    "description": "read data from channels",
+                    "handler-class": "io.bigdime.core.handler.MemoryChannelInputHandler",
+                    "properties": {
+                        "batchSize" : "999"
+                    }
+                },
+                {
+                    "name": "hfds sink for tracking data adaptor",
+                    "description": "hfds sink for tracking data adaptor",
+                    "handler-class": "io.bigdime.handler.webhdfs.WebHDFSWriterHandler",
+                    "properties": {
+                        "hostNames"           : "${hdfs_hosts}",
+                        "port"                : "${hdfs_port}",
+                        "hdfsFileNamePrefix"        : "clicks",
+                        "hdfsFileNameExtension"        : ".txt",
+                        "hdfsPath"            : "/webhdfs/v1/data/kafka/${dt}/${hour}",
+                        "hdfsUser"            : "${hdfs_user}",
+                        "hdfsOverwrite"       : "true",
+                        "hdfsPermissions"     : "755"
+                    }
+                },{
+                    "name": "data-validation-handler",
+                    "description": "data-validation-handler for hdfs sink",
+                    "handler-class": "io.bigdime.core.handler.DataValidationHandler",
+                    "properties": {
+                        "validation-type" : "record_count"
+                    }
+                },{
+                    "name": "hive-meta-handler",
+                    "description": "hive meta data handler to create hive table and partitions",
+                    "handler-class": "io.bigdime.handler.hive.HiveMetaDataHandler",
+                    "properties": {
+                        "hive.metastore.uris" : "${hive_metastore_uris}"
+                    }
+                }
+            ]
+        }
+    ]
+}

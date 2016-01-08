@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:jdbc="http://www.springframework.org/schema/jdbc" xmlns:jpa="http://www.springframework.org/schema/data/jpa"
+
+	xsi:schemaLocation="http://www.springframework.org/schema/jdbc http://www.springframework.org/schema/jdbc/spring-jdbc.xsd
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/data/jpa http://www.springframework.org/schema/data/jpa/spring-jpa.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd">
+
+	<context:annotation-config />
+	<context:component-scan base-package="io.bigdime.adaptor.metadata, io.bigdime.runtimeinfo" />
+	<context:property-placeholder
+		location="classpath:${env.properties}"
+		ignore-resource-not-found="false" ignore-unresolvable="true" />
+
+	<bean id="datasource"
+		class="org.apache.commons.dbcp.BasicDataSource">
+		<property name="driverClassName" value="${metastore.database.driverClassName}" />
+		<property name="url" value="${metastore.database.url}" />
+		<property name="username" value="${metastore.database.username}" />
+		<property name="password" value="${metastore.database.password}" />
+		<property name="initialSize" value="2"/>
+		<property name="maxActive" value = "5"/>
+	</bean>
+
+	<bean id="entityManagerFactory"
+		class="org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean">
+		<property name="dataSource" ref="datasource" />
+		<property name="persistenceUnitName" value="${metastore.persistence}" />
+	</bean>
+
+	<!-- Transaction Manager -->
+	<bean id="transactionManager" class="org.springframework.orm.jpa.JpaTransactionManager">
+		<property name="entityManagerFactory" ref="entityManagerFactory" />
+	</bean>
+
+	<!-- Jpa Repositories -->
+	<jpa:repositories base-package="io.bigdime.adaptor.metadata.repositories, io.bigdime.runtimeinfo.repositories"></jpa:repositories>
+</beans>

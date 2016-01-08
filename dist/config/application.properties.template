@@ -1,0 +1,59 @@
+#default properties, please don't change
+metastore.database.driverClassName=com.mysql.jdbc.Driver
+metastore.sourcename=metadata-store
+metastore.hibernate.mysql.dialect=org.hibernate.dialect.MySQL5Dialect
+metastore.hibernate.hbm2ddl.auto=update
+metastore.hibernate.show_sql=true
+metastore.hibernate.connection.autocommit=true
+metastore.dynamicDataTypesConfiguration=true
+metastore.persistence=MySQL-Persistence
+
+
+metastore.database.url=jdbc:mysql://localhost:3306/bigdime_metadata
+metastore.database.username=root
+metastore.database.password=root
+
+
+
+#File handler
+#update file_base_path
+file_base_path=/tmp/
+#
+file_buffer_size=1048576
+preserve_base_path=false
+preserve_relative_path=true
+
+#if the partition names should be extracted from the filename, specify how the partitions will be extracted. For example, if the file name is us_12-31-2015.log, the regex could be (.*)_(.*)_(.*)_.*. This will extract three values from the file name. (.*)_(\\d{2}(?:-?)\\d{2}(?:-?)\\d{4}).log$
+partition_regex=(.*)
+# if the above regex extracts n partition values, this field should contain n comma separated partition names, e.g. country, date
+partition_names=account
+
+#channel properties
+print_channel_stats=true
+print_stats_duration_in_seconds=30
+channel_capacity=314572800
+
+#sink properties
+
+#override hdfs_hosts this property
+hdfs_hosts=sandbox.hortonworks.com
+hdfs_port=50070
+
+#override hdfs_path property
+hdfs_path=/webhdfs/v1/data/bigdime/adaptor
+#override hdfs_user property
+hdfs_user=hdfs
+#override validation_type property. available values are raw_checksum, record_count, column_count
+validation_type=raw_checksum
+
+zkEnabled=true
+client-port=8080
+hbase.connection.timeout=60000
+#override hbase.zookeeper.quorum property
+hbase.zookeeper.quorum=sandbox.hortonworks.com
+hbase.zookeeper.property.clientPort=2181
+zookeeper.znode.parent=/hbase-unsecure
+htable.pool.size=100
+hbase.test.user.data=/src/test/resources/user-data.json
+hbase.table.name=bigdime_alerts
+hbase.alert.level=WARN

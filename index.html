@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<style>
+html, body, div, span, applet, object, iframe, h1, h2, h3, h4, h5, h6, p, blockquote, pre, a, abbr, acronym, address, big, cite, code, del, dfn, em, font, img, ins, kbd, q, s, samp, small, strike, strong, sub, sup, tt, var, b, u, i, center, dl, dt, dd, ol, ul, li, fieldset, form, label, legend, caption {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    outline: 0;
+}
+#header {
+	background-color: #4285f4;
+	color: white;
+	text-align: left;
+	width: 100%;
+	height: 10%;
+	font-family: "Sans-serif", Verdana
+}
+
+ul.topnav {
+	list-style-type: none;
+	margin: 0;
+	padding: 0;
+	overflow: auto;
+	background-color: #333;
+	font-family: "Sans-serif", Verdana
+}
+
+/* Float the list items side by side */
+ul.topnav li {
+	float: left;
+	height: 100%;
+}
+
+/* Style the links inside the list items */
+ul.topnav li a {
+	display: inline-block;
+	color: #f2f2f2;
+	text-align: center;
+	padding: 14px 16px;
+	text-decoration: none;
+	transition: 0.3s;
+	font-size: 17px;
+	width: 100%;
+	font-family: "Sans-serif", Verdana
+}
+
+/* Change background color of links on hover */
+ul.topnav li a:hover {
+	background-color: #111;
+}
+
+/* Hide the list item that contains the link that should open and close the topnav on small screens */
+ul.topnav li.icon {
+	display: none;
+}
+
+#nav {
+	line-height: 30px;
+	background-color: #eeeeee;
+	height: 100%;
+	width: 100px;
+	font-family: "Sans-serif", Verdana
+}
+
+#section {
+	width: 100%;
+	height: 90%;
+	font-family: "Sans-serif", Verdana
+}
+
+#footer {
+	width: 100%;
+	height: 10%;
+/* 	position: absolute; */
+	bottom: 0;
+	background-color: #4285f4;
+	color: white;
+	clear: both;
+	text-align: left;
+	font-family: "Sans-serif", Arial
+}
+
+.pagelayout {
+	width: inherit;
+	height: 100%;
+}
+
+.tablayout {
+	height: 85%;
+	width: 100%;
+}
+
+html,body {
+	height: 100%;
+	width: 100%;
+
+}
+/*For smartphones and tablets*/
+@media only screen and (min-width: 320px) and (max-width: 768px) {
+nav {
+    width:100%;
+  }
+ul.topnav li {
+	float: left;
+	height: 100%;
+}
+
+}
+
+
+</style>
+<script src="http://code.jquery.com/jquery-1.10.2.js"></script>
+<script src="http://code.jquery.com/ui/1.10.4/jquery-ui.js"></script>
+
+<script>
+         $(function() {
+            $( "#tabs" ).tabs();
+         });
+      </script>
+
+<body>
+
+	<div id="header">
+		<h1>BigDime</h1>
+	</div>
+
+	<div id="section">
+		<div id="tabs" class="pagelayout">
+		<nav class="nav">
+			<ul class="topnav">
+				<li><a href="#tabs-1">Home</a></li>
+				<li><a href="#tabs-2">About</a></li>
+				<li><a href="#tabs-3">Architecture</a></li>
+				<li><a href="#tabs-4">Community</a></li>
+				<li><a href="#tabs-5">Resources</a></li>
+				<li class="icon"><a href="javascript:void(0);"
+					onclick="myFunction()">&#9776;</a></li>
+			</ul>
+        </nav>
+			<div id="tabs-1" class="tablayout" >
+				<iframe src="bigdime_home.html" class="pagelayout"> </iframe>
+			</div>
+			<div id="tabs-2" class="tablayout">
+				<iframe src="about_bigdime.html" class="pagelayout"> </iframe>
+			</div>
+			<div id="tabs-3" class="tablayout">
+				<iframe src="architecture.html" class="pagelayout"> </iframe>
+			</div>
+			<div id="tabs-4" class="tablayout">
+				<iframe src="community.html" class="pagelayout"> </iframe>
+			</div>
+			<div id="tabs-5" class="tablayout">
+				<iframe src="resources.html" class="pagelayout"> </iframe>
+			</div>
+		</div>
+	</div>
+
+	<div id="footer">Copyright © StubHub</div>
+
+</body>
+</html>

@@ -3,12 +3,9 @@
  */
 package io.bigdime.core.handler;
 
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Properties;
 
 import org.mockito.Mock;
 import org.mockito.Mockito;
@@ -51,17 +48,7 @@ public class HandlerFactoryTest extends AbstractTestNGSpringContextTests {
 	public static synchronized void initHandlerFactory() throws IOException {
 		if (initDone)
 			return;
-		File propertiesFile = File.createTempFile("unit-testHandlerFactory", ".properties");
-		System.setProperty("env.properties", propertiesFile.getAbsolutePath());
-
-		Properties p = new Properties();
-		p.put("unit-token-1", "unit-token-value-1");
-		try (FileOutputStream fileOut = new FileOutputStream(propertiesFile);) {
-			p.store(fileOut, "");
-			fileOut.flush();
-		} finally {
-
-		}
+		System.setProperty("env.properties", "application-localhost.properties");
 		initDone = true;
 	}
 

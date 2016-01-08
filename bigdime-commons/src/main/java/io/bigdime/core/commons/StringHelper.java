@@ -79,7 +79,7 @@ public final class StringHelper {
 												// headerName=account
 			String newValue = properties.getProperty(tokenizedString);
 			if (newValue != null) {
-				return newValue;
+				return StringUtils.trim(newValue);
 			}
 		}
 		return propertyName;

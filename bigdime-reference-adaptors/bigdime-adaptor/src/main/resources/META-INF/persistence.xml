@@ -1,0 +1,36 @@
+<persistence xmlns="http://java.sun.com/xml/ns/persistence"
+	version="1.0">
+
+	<persistence-unit name="MySQL-Persistence" transaction-type="RESOURCE_LOCAL">
+	    <class>io.bigdime.adaptor.metadata.dto.AttributeDTO</class>
+	    <class>io.bigdime.adaptor.metadata.dto.MetasegmentDTO</class>
+	    <class>io.bigdime.adaptor.metadata.dto.EntiteeDTO</class>
+	    <class>io.bigdime.adaptor.metadata.dto.DataTypeDTO</class>
+	    <class>io.bigdime.runtimeinfo.DTO.RuntimeInfoDTO</class>
+	    <class>io.bigdime.runtimeinfo.DTO.RuntimePropertyDTO</class>
+		<provider>org.hibernate.ejb.HibernatePersistence</provider>
+		<properties>
+		
+			<property name="hibernate.dialect" value="${metastore.hibernate.mysql.dialect}" />
+			<property name="hibernate.hbm2ddl.auto" value="${metastore.hibernate.hbm2ddl.auto}" />
+			<property name="hibernate.show_sql" value="update"/>
+			<property name="hibernate.connection.autocommit" value="${metastore.hibernate.connection.autocommit}" />
+		</properties>
+	</persistence-unit>
+	
+	
+	<persistence-unit name="embedded-persistence" transaction-type="RESOURCE_LOCAL">
+		<class>io.bigdime.adaptor.metadata.dto.AttributeDTO</class>
+	    <class>io.bigdime.adaptor.metadata.dto.MetasegmentDTO</class>
+	    <class>io.bigdime.adaptor.metadata.dto.EntiteeDTO</class>
+	    <class>io.bigdime.adaptor.metadata.dto.DataTypeDTO</class>
+		<provider>org.hibernate.ejb.HibernatePersistence</provider>
+		<properties>
+			<property name="hibernate.dialect" value="${runtimestore.hibernate.H2.dialect}" />
+			<property name="hibernate.hbm2ddl.auto" value="create-drop" />
+			<property name="hibernate.show_sql" value="${runtimestore.hibernate.show_sql}" />
+		</properties>
+	</persistence-unit>
+	
+   
+</persistence>
