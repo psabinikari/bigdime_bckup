@@ -68,7 +68,8 @@ public class DataCleansingHandler extends AbstractHandler {
 	private JdbcTemplate jdbcTemplate;
 	private String handlerPhase = null;
 	private String jsonStr = null;
-	//private String sql;
+
+	// private String sql;
 
 	@Override
 	public void build() throws AdaptorConfigurationException {
@@ -93,31 +94,33 @@ public class DataCleansingHandler extends AbstractHandler {
 		try {
 
 			jdbcInputDescriptor.parseDescriptor(jsonStr);
-			//sql = jdbcInputDescriptor.formatQuery(driverName);
+			// sql = jdbcInputDescriptor.formatQuery(driverName);
 		} catch (IllegalArgumentException ex) {
-			throw new InvalidValueConfigurationException("incorrect value specified in src-desc, value must be in json string format");
-		} /*catch (JdbcHandlerException e) {
-			// TODO Auto-generated catch block
-			logger.alert(ALERT_TYPE.INGESTION_FAILED,
-					ALERT_CAUSE.APPLICATION_INTERNAL_ERROR,
-					ALERT_SEVERITY.BLOCKER,
-					"\"sql formatter exception\" inputDescription={} error={}",
-					jsonStr, e.toString());
-			throw new AdaptorConfigurationException(e);
-		}*/
+			throw new InvalidValueConfigurationException(
+					"incorrect value specified in src-desc, value must be in json string format");
+		} /*
+		 * catch (JdbcHandlerException e) { // TODO Auto-generated catch block
+		 * logger.alert(ALERT_TYPE.INGESTION_FAILED,
+		 * ALERT_CAUSE.APPLICATION_INTERNAL_ERROR, ALERT_SEVERITY.BLOCKER,
+		 * "\"sql formatter exception\" inputDescription={} error={}", jsonStr,
+		 * e.toString()); throw new AdaptorConfigurationException(e); }
+		 */
 	}
 
 	@Override
 	public Status process() throws HandlerException {
 		handlerPhase = "process DataCleansingHandler";
 
-		logger.debug(handlerPhase,"handler_id={} handler_name={} properties={}", getId(),
+		logger.debug(handlerPhase,
+				"handler_id={} handler_name={} properties={}", getId(),
 				getName(), getPropertyMap());
 		JdbcMetadataManagement jdbcMetadataManagment = new JdbcMetadataManagement();
 		jdbcTemplate = new JdbcTemplate(sqlDataSource);
-		Metasegment metasegment = jdbcMetadataManagment.getSourceMetadata(jdbcInputDescriptor, jdbcTemplate);
+		Metasegment metasegment = jdbcMetadataManagment.getSourceMetadata(
+				jdbcInputDescriptor, jdbcTemplate);
 
-		logger.debug("Retrieved Data Cleansing Handler Source Metadata","Metasegment={}", metasegment);
+		logger.debug("Retrieved Data Cleansing Handler Source Metadata",
+				"Metasegment={}", metasegment);
 
 		jdbcMetadataManagment.setColumnList(jdbcInputDescriptor, metasegment);
 		if (getSimpleJournal().getEventList() != null
@@ -131,7 +134,9 @@ public class DataCleansingHandler extends AbstractHandler {
 			 * @formatter:on
 			 */
 			List<ActionEvent> actionEvents = getSimpleJournal().getEventList();
-			logger.debug("process DataCleansingHandler","_message=\"journal not empty\" list_size={}",actionEvents.size());
+			logger.debug("process DataCleansingHandler",
+					"_message=\"journal not empty\" list_size={}",
+					actionEvents.size());
 			return processIt(actionEvents);
 
 		} else {
@@ -144,49 +149,53 @@ public class DataCleansingHandler extends AbstractHandler {
 			 * @formatter:on
 			 */
 			List<ActionEvent> actionEvents = getHandlerContext().getEventList();
-			logger.debug("process DataCleansingHandler","_message=\"journal empty, will process from context\" actionEvents={}",
-									actionEvents);
+			logger.debug(
+					"process DataCleansingHandler",
+					"_message=\"journal empty, will process from context\" actionEvents={}",
+					actionEvents);
 
 			Preconditions.checkNotNull(actionEvents);
-			Preconditions.checkArgument(!actionEvents.isEmpty(),"eventList in HandlerContext must contain at least one ActionEvent");
+			Preconditions
+					.checkArgument(!actionEvents.isEmpty(),
+							"eventList in HandlerContext must contain at least one ActionEvent");
 			return processIt(actionEvents);
 		}
 	}
-	
-	
-	private Object convertFromBytes(byte[] bytes) throws IOException, ClassNotFoundException {
+
+	private Object convertFromBytes(byte[] bytes) throws IOException,
+			ClassNotFoundException {
 		Object obj = null;
-        ByteArrayInputStream bis = null;
-        ObjectInputStream ois = null;
-        try {
-            bis = new ByteArrayInputStream(bytes);
-            ois = new ObjectInputStream(bis);
-            obj = ois.readObject();
-        } finally {
-            if (bis != null) {
-                bis.close();
-            }
-            if (ois != null) {
-                ois.close();
-            }
-        }
-        return obj;
+		ByteArrayInputStream bis = null;
+		ObjectInputStream ois = null;
+		try {
+			bis = new ByteArrayInputStream(bytes);
+			ois = new ObjectInputStream(bis);
+			obj = ois.readObject();
+		} finally {
+			if (bis != null) {
+				bis.close();
+			}
+			if (ois != null) {
+				ois.close();
+			}
+		}
+		return obj;
 	}
 
 	@SuppressWarnings("unchecked")
 	private Status processIt(List<ActionEvent> actionEvents)
 			throws HandlerException {
 		Status statusToReturn = Status.READY;
-		
-		
+
 		ActionEvent actionEvent = actionEvents.remove(0);
-		//System.out.println("byte count in cleansing"+actionEvent.getBody().length);
-		
+		// System.out.println("byte count in cleansing"+actionEvent.getBody().length);
+
 		byte[] data = actionEvent.getBody();
 		StringBuffer stringBuffer = new StringBuffer();
 		String datePartition = null;
-		//@SuppressWarnings("unchecked")
-		//Map<String, Object> row = (Map<String, Object>) SerializationUtils.deserialize(data);
+		// @SuppressWarnings("unchecked")
+		// Map<String, Object> row = (Map<String, Object>)
+		// SerializationUtils.deserialize(data);
 		Map<String, Object> row = null;
 		try {
 			row = (Map<String, Object>) convertFromBytes(data);
@@ -197,85 +206,95 @@ public class DataCleansingHandler extends AbstractHandler {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		}
-		if (row!=null){
-		for (int columnNamesListCount = 0; columnNamesListCount < jdbcInputDescriptor
-				.getColumnList().size(); columnNamesListCount++) {
-			// Ensure each field doesn't have rowlineDelimeter
-			Pattern p = Pattern.compile(jdbcInputDescriptor.getRowDelimeter());
-			StringBuffer sbf = new StringBuffer();
-			Matcher m = p.matcher(sbf.append(row.get(jdbcInputDescriptor
-					.getColumnList().get(columnNamesListCount))));
-			StringBuffer sb = new StringBuffer();
-			while (m.find()) {
-				m.appendReplacement(sb, " ");
-			}
-			m.appendTail(sb);
-			stringBuffer.append(sb);
-			if (columnNamesListCount != jdbcInputDescriptor.getColumnList().size() - 1)
-				stringBuffer.append(jdbcInputDescriptor.getFieldDelimeter());
+		if (row != null) {
+			for (int columnNamesListCount = 0; columnNamesListCount < jdbcInputDescriptor
+					.getColumnList().size(); columnNamesListCount++) {
+				// Ensure each field doesn't have rowlineDelimeter
+				Pattern p = Pattern.compile(jdbcInputDescriptor
+						.getRowDelimeter());
+				StringBuffer sbf = new StringBuffer();
+				Matcher m = p.matcher(sbf.append(row.get(jdbcInputDescriptor
+						.getColumnList().get(columnNamesListCount))));
+				StringBuffer sb = new StringBuffer();
+				while (m.find()) {
+					m.appendReplacement(sb, " ");
+				}
+				m.appendTail(sb);
+				stringBuffer.append(sb);
+				if (columnNamesListCount != jdbcInputDescriptor.getColumnList().size() - 1)
+					stringBuffer.append(jdbcInputDescriptor.getFieldDelimeter());
 
-			if (jdbcInputDescriptor.getIncrementedColumnType().indexOf("DATE") >= JdbcConstants.INTEGER_CONSTANT_ZERO
-					|| jdbcInputDescriptor.getIncrementedColumnType().indexOf("TIMESTAMP") >= JdbcConstants.INTEGER_CONSTANT_ZERO) {
-				if (jdbcInputDescriptor.getColumnList().get(columnNamesListCount).equalsIgnoreCase(jdbcInputDescriptor.getIncrementedBy())) {
-					try {
-						datePartition = (new Timestamp((new SimpleDateFormat(DATE_FORMAT))
-								        .parse(row.get(jdbcInputDescriptor.getColumnList()
-										.get(columnNamesListCount)).toString())
-										.getTime()).toString()).substring(0, 10)
-										.replaceAll("-", "");
-					} catch (ParseException e) {
+				if (jdbcInputDescriptor.getIncrementedColumnType().indexOf("DATE") >= JdbcConstants.INTEGER_CONSTANT_ZERO
+						|| jdbcInputDescriptor.getIncrementedColumnType().indexOf("TIMESTAMP") >= JdbcConstants.INTEGER_CONSTANT_ZERO) {
 
-						logger.alert(ALERT_TYPE.INGESTION_FAILED,
-									 ALERT_CAUSE.APPLICATION_INTERNAL_ERROR,
-									 ALERT_SEVERITY.BLOCKER,
-									 "\"Incremental column: Date parser exception\" inputDescription={} error={}",
-									 "", e.toString());
-						e.printStackTrace();
+					if (jdbcInputDescriptor
+							.getColumnList()
+							.get(columnNamesListCount)
+							.equalsIgnoreCase(
+									jdbcInputDescriptor.getIncrementedBy())) {
+						try {
+							datePartition = (new Timestamp(
+									(new SimpleDateFormat(DATE_FORMAT)).parse(
+											row.get(jdbcInputDescriptor
+													.getColumnList()
+													.get(columnNamesListCount))
+													.toString()).getTime())
+									.toString()).substring(0, 10).replaceAll(
+									"-", "");
+						} catch (ParseException e) {
+
+							logger.alert(
+									ALERT_TYPE.INGESTION_FAILED,
+									ALERT_CAUSE.APPLICATION_INTERNAL_ERROR,
+									ALERT_SEVERITY.BLOCKER,
+									"\"Incremental column: Date parser exception\" inputDescription={} error={}",
+									"", e.toString());
+							e.printStackTrace();
+						}
 					}
 				}
 			}
-		}
 
-		// apply cleansing here...
-		// data.toString().replace("\n", " ");
-		stringBuffer.append(jdbcInputDescriptor.getRowDelimeter());
-		actionEvent.setBody(stringBuffer.toString().getBytes());
+			// apply cleansing here...
+			// data.toString().replace("\n", " ");
+			stringBuffer.append(jdbcInputDescriptor.getRowDelimeter());
+			actionEvent.setBody(stringBuffer.toString().getBytes());
 
-		// Partition Dates logic..
-		actionEvent.getHeaders().put(ActionEventHeaderConstants.ENTITY_NAME.toUpperCase(),jdbcInputDescriptor.getEntityName());
+			// Partition Dates logic..
+			actionEvent.getHeaders().put(ActionEventHeaderConstants.ENTITY_NAME.toUpperCase(),jdbcInputDescriptor.getEntityName());
 
-		if (jdbcInputDescriptor.getSnapshot() != null && jdbcInputDescriptor.getSnapshot().equalsIgnoreCase("YES")) {
-			// get current date and format it to string
-			actionEvent.getHeaders().put(ActionEventHeaderConstants.DATE,new SimpleDateFormat("YYYYMMDD").format(new Date()));
-			actionEvent.getHeaders().put(ActionEventHeaderConstants.SNAPSHOT,"snapshot");
-		}
-		if (datePartition != null)
-			actionEvent.getHeaders().put(ActionEventHeaderConstants.DATE,datePartition);
-		else
-			actionEvent.getHeaders().put(ActionEventHeaderConstants.DATE,new SimpleDateFormat("YYYYMMDD").format(new Date()));
-		
-		//to test DVS
-		actionEvent.getHeaders().put(ActionEventHeaderConstants.SCHEMA_TYPE_HIVE,"hive");
-		actionEvent.getHeaders().put(ActionEventHeaderConstants.HIVE_HOST_NAME, "localhost");
-		actionEvent.getHeaders().put(ActionEventHeaderConstants.HIVE_PORT,"9083");
-		actionEvent.getHeaders().put(ActionEventHeaderConstants.HIVE_DB_NAME,"test");
-		actionEvent.getHeaders().put(ActionEventHeaderConstants.HIVE_TABLE_NAME, jdbcInputDescriptor.getEntityName());
-		
-		/*
-		 * Check for outputChannel map. get the eventList of channels. check the
-		 * criteria and put the message.
-		 */
-		if (getOutputChannel() != null) {
-			getOutputChannel().put(actionEvent);
-		}
-		getHandlerContext().createSingleItemEventList(actionEvent);
-		if (!actionEvents.isEmpty()) {
-			getSimpleJournal().setEventList(actionEvents);
-			statusToReturn = Status.CALLBACK;
-		} else {
-			getSimpleJournal().setEventList(null);
-			statusToReturn = Status.READY;
-		}
+			if (jdbcInputDescriptor.getSnapshot() != null && jdbcInputDescriptor.getSnapshot().equalsIgnoreCase("YES")) {
+				// get current date and format it to string
+				actionEvent.getHeaders().put(ActionEventHeaderConstants.DATE,new SimpleDateFormat("YYYYMMDD").format(new Date()));
+				actionEvent.getHeaders().put(ActionEventHeaderConstants.SNAPSHOT, "snapshot");
+			}
+			if (datePartition != null)
+				actionEvent.getHeaders().put(ActionEventHeaderConstants.DATE,datePartition);
+			else
+				actionEvent.getHeaders().put(ActionEventHeaderConstants.DATE,new SimpleDateFormat("YYYYMMDD").format(new Date()));
+
+			// below are added just to test DVS
+			actionEvent.getHeaders().put(ActionEventHeaderConstants.SCHEMA_TYPE_HIVE, "hive");
+			actionEvent.getHeaders().put(ActionEventHeaderConstants.HIVE_HOST_NAME, "localhost");
+			actionEvent.getHeaders().put(ActionEventHeaderConstants.HIVE_PORT,"9083");
+			actionEvent.getHeaders().put(ActionEventHeaderConstants.HIVE_DB_NAME, "test");
+			actionEvent.getHeaders().put(ActionEventHeaderConstants.HIVE_TABLE_NAME,jdbcInputDescriptor.getEntityName());
+
+			/*
+			 * Check for outputChannel map. get the eventList of channels. check
+			 * the criteria and put the message.
+			 */
+			if (getOutputChannel() != null) {
+				getOutputChannel().put(actionEvent);
+			}
+			getHandlerContext().createSingleItemEventList(actionEvent);
+			if (!actionEvents.isEmpty()) {
+				getSimpleJournal().setEventList(actionEvents);
+				statusToReturn = Status.CALLBACK;
+			} else {
+				getSimpleJournal().setEventList(null);
+				statusToReturn = Status.READY;
+			}
 		}
 		return statusToReturn;
 
