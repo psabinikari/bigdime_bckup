@@ -54,15 +54,13 @@ public class RuntimeInfoRepositoryService {
 							adaptorRuntimeInfo.getAdaptorName(),
 							adaptorRuntimeInfo.getEntityName(),
 							adaptorRuntimeInfo.getInputDescriptor());
-			repoAdaptorRuntimeInformation.setAdaptorName(adaptorRuntimeInfo
-					.getAdaptorName());
-			repoAdaptorRuntimeInformation.setEntityName(adaptorRuntimeInfo
-					.getEntityName());
-			repoAdaptorRuntimeInformation.setInputDescriptor(adaptorRuntimeInfo
-					.getInputDescriptor());
-			repoAdaptorRuntimeInformation.setNumOfAttempts(adaptorRuntimeInfo
-					.getNumOfAttempts());
+			
+			repoAdaptorRuntimeInformation.setAdaptorName(adaptorRuntimeInfo.getAdaptorName());
+			repoAdaptorRuntimeInformation.setEntityName(adaptorRuntimeInfo.getEntityName());
+			repoAdaptorRuntimeInformation.setInputDescriptor(adaptorRuntimeInfo.getInputDescriptor());
+			repoAdaptorRuntimeInformation.setNumOfAttempts(adaptorRuntimeInfo.getNumOfAttempts());
 			repoAdaptorRuntimeInformation.setStatus(adaptorRuntimeInfo.getStatus());
+			
 			if(repoAdaptorRuntimeInformation.getRuntimeProperties()!= null
 					 && repoAdaptorRuntimeInformation.getRuntimeProperties().size() > 0) {
 				for(RuntimePropertyDTO repoRuntimePropertyDTO: repoAdaptorRuntimeInformation.getRuntimeProperties()){
@@ -73,6 +71,7 @@ public class RuntimeInfoRepositoryService {
 					}
 				}
 			}
+			
 			repoAdaptorRuntimeInformation.getRuntimeProperties().add(runtimePropertyDTO);
 			repoAdaptorRuntimeInformation.setUpdatedAt();
 			runtimeInfoRepository.save(repoAdaptorRuntimeInformation);
