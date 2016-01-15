@@ -1,6 +1,3 @@
-/**
- * Copyright (C) 2015 Stubhub.
- */
 package io.bigdime.core.constants;
 
 /**
@@ -64,7 +61,10 @@ public final class ActionEventHeaderConstants {
 	public static final String LINES_TERMINATED_BY = "linesTerminatedBy";
 	public static final String HIVE_PARTITION_LOCATION = "hivePartitionLocation";
 	public static final String CLEANUP_REQUIRED = "cleanupRequired";
-	public static final String READ_COMPLETE = "readComplete";	
+	public static final String READ_COMPLETE = "readComplete";
+	
+	public static final String DATE = "DATE";
+	public static final String SNAPSHOT = "SNAPSHOT";
 	
 	public static final String SCHEMA_TYPE_HIVE = "HIVE";
 	public static final String HIVE_HOST_NAME = "hiveHostName";

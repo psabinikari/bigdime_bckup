@@ -3,10 +3,6 @@
  */
 package io.bigdime.handler.jdbc;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectInputStream;
 import java.sql.Timestamp;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -69,8 +65,6 @@ public class DataCleansingHandler extends AbstractHandler {
 	private String handlerPhase = null;
 	private String jsonStr = null;
 
-	// private String sql;
-
 	@Override
 	public void build() throws AdaptorConfigurationException {
 		handlerPhase = "build DataCleansingHandler";
@@ -86,25 +80,17 @@ public class DataCleansingHandler extends AbstractHandler {
 			throw new InvalidValueConfigurationException(
 					"src-desc can't be null");
 		}
-		logger.info(handlerPhase,
-				"entity:fileNamePattern={} input_field_name={}",
+		logger.info(handlerPhase,"entity:fileNamePattern={} input_field_name={}",
 				srcDescInputs.getKey(), srcDescInputs.getValue());
 		jsonStr = srcDescInputs.getKey();
-		// jdbcInputDescriptor = new JdbcInputDescriptor();
+		
 		try {
 
 			jdbcInputDescriptor.parseDescriptor(jsonStr);
-			// sql = jdbcInputDescriptor.formatQuery(driverName);
 		} catch (IllegalArgumentException ex) {
 			throw new InvalidValueConfigurationException(
 					"incorrect value specified in src-desc, value must be in json string format");
-		} /*
-		 * catch (JdbcHandlerException e) { // TODO Auto-generated catch block
-		 * logger.alert(ALERT_TYPE.INGESTION_FAILED,
-		 * ALERT_CAUSE.APPLICATION_INTERNAL_ERROR, ALERT_SEVERITY.BLOCKER,
-		 * "\"sql formatter exception\" inputDescription={} error={}", jsonStr,
-		 * e.toString()); throw new AdaptorConfigurationException(e); }
-		 */
+		} 
 	}
 
 	@Override
@@ -114,6 +100,7 @@ public class DataCleansingHandler extends AbstractHandler {
 		logger.debug(handlerPhase,
 				"handler_id={} handler_name={} properties={}", getId(),
 				getName(), getPropertyMap());
+		
 		JdbcMetadataManagement jdbcMetadataManagment = new JdbcMetadataManagement();
 		jdbcTemplate = new JdbcTemplate(sqlDataSource);
 		Metasegment metasegment = jdbcMetadataManagment.getSourceMetadata(
@@ -123,8 +110,7 @@ public class DataCleansingHandler extends AbstractHandler {
 				"Metasegment={}", metasegment);
 
 		jdbcMetadataManagment.setColumnList(jdbcInputDescriptor, metasegment);
-		if (getSimpleJournal().getEventList() != null
-				&& !getSimpleJournal().getEventList().isEmpty()) {
+		if (getSimpleJournal().getEventList() != null && !getSimpleJournal().getEventList().isEmpty()) {
 			// process for CALLBACK status.
 			/*
 			 * @formatter:off Get the list from journal remove one from the list
@@ -149,39 +135,22 @@ public class DataCleansingHandler extends AbstractHandler {
 			 * @formatter:on
 			 */
 			List<ActionEvent> actionEvents = getHandlerContext().getEventList();
-			logger.debug(
-					"process DataCleansingHandler",
-					"_message=\"journal empty, will process from context\" actionEvents={}",
+			logger.debug("process DataCleansingHandler","_message=\"journal empty, will process from context\" actionEvents={}",
 					actionEvents);
 
 			Preconditions.checkNotNull(actionEvents);
-			Preconditions
-					.checkArgument(!actionEvents.isEmpty(),
-							"eventList in HandlerContext must contain at least one ActionEvent");
+			Preconditions.checkArgument(!actionEvents.isEmpty(),"eventList in HandlerContext must contain at least one ActionEvent");
 			return processIt(actionEvents);
 		}
 	}
 
-	private Object convertFromBytes(byte[] bytes) throws IOException,
-			ClassNotFoundException {
-		Object obj = null;
-		ByteArrayInputStream bis = null;
-		ObjectInputStream ois = null;
-		try {
-			bis = new ByteArrayInputStream(bytes);
-			ois = new ObjectInputStream(bis);
-			obj = ois.readObject();
-		} finally {
-			if (bis != null) {
-				bis.close();
-			}
-			if (ois != null) {
-				ois.close();
-			}
-		}
-		return obj;
-	}
-
+	
+    /**
+     * Processes each record to Channel
+     * @param actionEvents
+     * @return
+     * @throws HandlerException
+     */
 	@SuppressWarnings("unchecked")
 	private Status processIt(List<ActionEvent> actionEvents)
 			throws HandlerException {
@@ -191,37 +160,28 @@ public class DataCleansingHandler extends AbstractHandler {
 		// System.out.println("byte count in cleansing"+actionEvent.getBody().length);
 
 		byte[] data = actionEvent.getBody();
+
 		StringBuffer stringBuffer = new StringBuffer();
 		String datePartition = null;
 		// @SuppressWarnings("unchecked")
-		// Map<String, Object> row = (Map<String, Object>)
-		// SerializationUtils.deserialize(data);
-		Map<String, Object> row = null;
-		try {
-			row = (Map<String, Object>) convertFromBytes(data);
-		} catch (ClassNotFoundException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		} catch (IOException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		}
+		Map<String, Object> row = (Map<String, Object>) SerializationUtils
+				.deserialize(data);
+
 		if (row != null) {
-			for (int columnNamesListCount = 0; columnNamesListCount < jdbcInputDescriptor
-					.getColumnList().size(); columnNamesListCount++) {
+			for (int columnNamesListCount = 0; columnNamesListCount < jdbcInputDescriptor.getColumnList().size(); columnNamesListCount++) {
 				// Ensure each field doesn't have rowlineDelimeter
 				Pattern p = Pattern.compile(jdbcInputDescriptor
 						.getRowDelimeter());
 				StringBuffer sbf = new StringBuffer();
-				Matcher m = p.matcher(sbf.append(row.get(jdbcInputDescriptor
-						.getColumnList().get(columnNamesListCount))));
+				Matcher m = p.matcher(sbf.append(row.get(jdbcInputDescriptor.getColumnList().get(columnNamesListCount))));
 				StringBuffer sb = new StringBuffer();
 				while (m.find()) {
 					m.appendReplacement(sb, " ");
 				}
 				m.appendTail(sb);
 				stringBuffer.append(sb);
-				if (columnNamesListCount != jdbcInputDescriptor.getColumnList().size() - 1)
+				if (columnNamesListCount != jdbcInputDescriptor.getColumnList()
+						.size() - 1)
 					stringBuffer.append(jdbcInputDescriptor.getFieldDelimeter());
 
 				if (jdbcInputDescriptor.getIncrementedColumnType().indexOf("DATE") >= JdbcConstants.INTEGER_CONSTANT_ZERO
@@ -287,7 +247,7 @@ public class DataCleansingHandler extends AbstractHandler {
 			if (getOutputChannel() != null) {
 				getOutputChannel().put(actionEvent);
 			}
-			getHandlerContext().createSingleItemEventList(actionEvent);
+			 //getHandlerContext().createSingleItemEventList(actionEvent);
 			if (!actionEvents.isEmpty()) {
 				getSimpleJournal().setEventList(actionEvents);
 				statusToReturn = Status.CALLBACK;

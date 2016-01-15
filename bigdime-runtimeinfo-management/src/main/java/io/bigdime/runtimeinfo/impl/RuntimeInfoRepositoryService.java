@@ -6,6 +6,7 @@ package io.bigdime.runtimeinfo.impl;
 import java.util.List;
 
 import io.bigdime.runtimeinfo.DTO.RuntimeInfoDTO;
+import io.bigdime.runtimeinfo.DTO.RuntimePropertyDTO;
 import io.bigdime.runtimeinfo.repositories.RuntimeInfoRepository;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,23 +44,40 @@ public class RuntimeInfoRepositoryService {
 			runtimeInfoRepository.save(adaptorRuntimeInfo);
 			isCreatedOrUpdated = true;
 		} else {
+			if(adaptorRuntimeInfo.getRuntimeProperties()!=null)
+			for(RuntimePropertyDTO runtimePropertyDTO: adaptorRuntimeInfo.getRuntimeProperties()) {
 			logger.debug(SOURCENAME, "Updating existing Runtime Info entry",
 					"Updating existing Runtime Info entry for adaproName:{}",
 					adaptorRuntimeInfo.getAdaptorName());
-			adaptorRuntimeInformation.setAdaptorName(adaptorRuntimeInfo
+			RuntimeInfoDTO repoAdaptorRuntimeInformation = runtimeInfoRepository
+					.findByAdaptorNameAndEntityNameAndInputDescriptor(
+							adaptorRuntimeInfo.getAdaptorName(),
+							adaptorRuntimeInfo.getEntityName(),
+							adaptorRuntimeInfo.getInputDescriptor());
+			repoAdaptorRuntimeInformation.setAdaptorName(adaptorRuntimeInfo
 					.getAdaptorName());
-			adaptorRuntimeInformation.setEntityName(adaptorRuntimeInfo
+			repoAdaptorRuntimeInformation.setEntityName(adaptorRuntimeInfo
 					.getEntityName());
-			adaptorRuntimeInformation.setInputDescriptor(adaptorRuntimeInfo
+			repoAdaptorRuntimeInformation.setInputDescriptor(adaptorRuntimeInfo
 					.getInputDescriptor());
-			adaptorRuntimeInformation.setNumOfAttempts(adaptorRuntimeInfo
+			repoAdaptorRuntimeInformation.setNumOfAttempts(adaptorRuntimeInfo
 					.getNumOfAttempts());
-			adaptorRuntimeInformation.setStatus(adaptorRuntimeInfo.getStatus());
-			adaptorRuntimeInformation.setRuntimeProperties(adaptorRuntimeInfo
-					.getRuntimeProperties());
-			adaptorRuntimeInformation.setUpdatedAt();
-			runtimeInfoRepository.save(adaptorRuntimeInformation);
+			repoAdaptorRuntimeInformation.setStatus(adaptorRuntimeInfo.getStatus());
+			if(repoAdaptorRuntimeInformation.getRuntimeProperties()!= null
+					 && repoAdaptorRuntimeInformation.getRuntimeProperties().size() > 0) {
+				for(RuntimePropertyDTO repoRuntimePropertyDTO: repoAdaptorRuntimeInformation.getRuntimeProperties()){
+					if(repoRuntimePropertyDTO.getKey().equalsIgnoreCase(runtimePropertyDTO.getKey())){
+						runtimePropertyDTO.setRuntimePropertyId(repoRuntimePropertyDTO.getRuntimePropertyId());
+						repoAdaptorRuntimeInformation.getRuntimeProperties().remove(repoRuntimePropertyDTO);
+						break;
+					}
+				}
+			}
+			repoAdaptorRuntimeInformation.getRuntimeProperties().add(runtimePropertyDTO);
+			repoAdaptorRuntimeInformation.setUpdatedAt();
+			runtimeInfoRepository.save(repoAdaptorRuntimeInformation);
 			isCreatedOrUpdated = true;
+			}
 		}
 		return isCreatedOrUpdated;
 

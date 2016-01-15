@@ -65,7 +65,7 @@ public class MetadataRepositoryService {
 	 * 
 	 * @param metasegment
 	 */
-	public void createOrUpdateMetasegment(MetasegmentDTO metasegment,
+	public synchronized void createOrUpdateMetasegment(MetasegmentDTO metasegment,
 			boolean inreaseVersion) {
 
 		Assert.notNull(metasegment, "MetasegmentDTO object should not be null");
