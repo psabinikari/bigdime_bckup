@@ -37,7 +37,7 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 @PrepareForTest(HiveTableManger.class)
-public class ColumnTypeValidatorTest extends PowerMockTestCase {
+public class SourceColumnTypeValidatorTest extends PowerMockTestCase {
 	
 	@Test(expectedExceptions = IllegalArgumentException.class)
 	public void validateNullHiveHostTest() throws DataValidationException {
