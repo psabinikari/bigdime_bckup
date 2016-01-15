@@ -234,12 +234,12 @@ public class DataCleansingHandler extends AbstractHandler {
 				actionEvent.getHeaders().put(ActionEventHeaderConstants.DATE,new SimpleDateFormat("YYYYMMDD").format(new Date()));
 
 			// below are added just to test DVS
-			actionEvent.getHeaders().put(ActionEventHeaderConstants.SCHEMA_TYPE_HIVE, "hive");
-			actionEvent.getHeaders().put(ActionEventHeaderConstants.HIVE_HOST_NAME, "localhost");
+			/*actionEvent.getHeaders().put(ActionEventHeaderConstants.SCHEMA_TYPE_HIVE, "hive");
+			actionEvent.getHeaders().put(ActionEventHeaderConstants.HIVE_HOST_NAME, "sandbox.hortonworks.com");
 			actionEvent.getHeaders().put(ActionEventHeaderConstants.HIVE_PORT,"9083");
 			actionEvent.getHeaders().put(ActionEventHeaderConstants.HIVE_DB_NAME, "test");
 			actionEvent.getHeaders().put(ActionEventHeaderConstants.HIVE_TABLE_NAME,jdbcInputDescriptor.getEntityName());
-
+*/
 			/*
 			 * Check for outputChannel map. get the eventList of channels. check
 			 * the criteria and put the message.
