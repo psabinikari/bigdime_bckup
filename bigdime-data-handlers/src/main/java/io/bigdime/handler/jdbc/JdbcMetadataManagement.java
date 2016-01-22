@@ -13,24 +13,23 @@ import io.bigdime.adaptor.metadata.model.Metasegment;
 import io.bigdime.alert.LoggerFactory;
 import io.bigdime.core.commons.AdaptorLogger;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Scope;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
-
+import io.bigdime.core.config.AdaptorConfig;
 
 /**
  * 
  * @author Pavan Sabinikari
- *
+ * 
  */
 
 @Component
 @Scope("prototype")
 public class JdbcMetadataManagement {
 
-	private static final AdaptorLogger logger = new AdaptorLogger(LoggerFactory.getLogger(JdbcMetadataManagement.class));
+	private static final AdaptorLogger logger = new AdaptorLogger(
+			LoggerFactory.getLogger(JdbcMetadataManagement.class));
 
 	/**
 	 * 
@@ -38,11 +37,13 @@ public class JdbcMetadataManagement {
 	 * @param jdbcTemplate
 	 * @return
 	 */
-	public Metasegment getSourceMetadata(JdbcInputDescriptor jdbcInputDescriptor, JdbcTemplate jdbcTemplate) {
+	public Metasegment getSourceMetadata(
+			JdbcInputDescriptor jdbcInputDescriptor, JdbcTemplate jdbcTemplate) {
 		// jdbcTemplate.setFetchSize(100);
 		// jdbcTemplate.setMaxRows(100);
-		Metasegment metaSegmnt = (Metasegment) jdbcTemplate.query("SELECT * FROM " + jdbcInputDescriptor.getEntityName(),
-																new JdbcMetadata());
+		Metasegment metaSegmnt = (Metasegment) jdbcTemplate.query(
+				JdbcConstants.SELECT_FROM + jdbcInputDescriptor.getEntityName(),
+				new JdbcMetadata());
 		return metaSegmnt;
 	}
 
@@ -57,7 +58,8 @@ public class JdbcMetadataManagement {
 		HashMap<String, String> columnNamesAndTypes = new HashMap<String, String>();
 		if (metasegment != null) {
 
-			logger.debug("JDBC Handler Reader getting column list","tableName={}", jdbcInputDescriptor.getEntityName());
+			logger.debug("JDBC Handler Reader getting column list",
+					"tableName={}", jdbcInputDescriptor.getEntityName());
 			Set<Entitee> entitySet = metasegment.getEntitees();
 			for (Entitee entity : entitySet) {
 				if (entity.getAttributes() != null)
@@ -67,7 +69,8 @@ public class JdbcMetadataManagement {
 					}
 			}
 		} else
-			throw new IllegalArgumentException("Provided argument:metasegment object in getColumnList() cannot be null");
+			throw new IllegalArgumentException(
+					"Provided argument:metasegment object in getColumnList() cannot be null");
 		return columnNamesAndTypes;
 	}
 
@@ -76,11 +79,16 @@ public class JdbcMetadataManagement {
 	 * @param jdbcInputDescriptor
 	 * @param metasegment
 	 */
-	public void setColumnList(JdbcInputDescriptor jdbcInputDescriptor,Metasegment metasegment) {
+	public void setColumnList(JdbcInputDescriptor jdbcInputDescriptor,
+			Metasegment metasegment) {
 		List<String> columnNames = new ArrayList<String>();
 		if (metasegment != null) {
 			logger.debug("JDBC Handler Reader getting column list",
 					"tableName={}", jdbcInputDescriptor.getEntityName());
+			if (metasegment.getEntitees() == null)
+				throw new IllegalArgumentException(
+						"Metasegment should contain atleast one entity");
+
 			Set<Entitee> entitySet = metasegment.getEntitees();
 			for (Entitee entity : entitySet) {
 				if (entity.getAttributes() != null)
@@ -89,11 +97,17 @@ public class JdbcMetadataManagement {
 							columnNames.add(attribute.getAttributeName());
 
 						if (jdbcInputDescriptor.getIncrementedBy().length() > JdbcConstants.INTEGER_CONSTANT_ZERO
-								&& attribute.getAttributeName().equalsIgnoreCase(jdbcInputDescriptor.getIncrementedBy())) {
-						
-							jdbcInputDescriptor.setIncrementedColumnType(attribute.getAttributeType());
+								&& attribute.getAttributeName()
+										.equalsIgnoreCase(
+												jdbcInputDescriptor
+														.getIncrementedBy())) {
+
+							jdbcInputDescriptor
+									.setIncrementedColumnType(attribute
+											.getAttributeType());
 							// columnName = attribute.getAttributeName();
-							jdbcInputDescriptor.setColumnName(attribute.getAttributeName());
+							jdbcInputDescriptor.setColumnName(attribute
+									.getAttributeName());
 						}
 						if (jdbcInputDescriptor.getColumnName() == null) {
 							jdbcInputDescriptor.setColumnName(attribute
@@ -102,7 +116,8 @@ public class JdbcMetadataManagement {
 					}
 			}
 
-			if (jdbcInputDescriptor.getColumnList().size() > 0) jdbcInputDescriptor.getColumnList().clear();
+			if (jdbcInputDescriptor.getColumnList().size() > 0)
+				jdbcInputDescriptor.getColumnList().clear();
 			jdbcInputDescriptor.setColumnList(columnNames);
 
 		} else
@@ -110,23 +125,31 @@ public class JdbcMetadataManagement {
 					"Provided argument:metasegment object in getColumnList() cannot be null");
 	}
 
-	public void checkAndUpdateMetadata(Metasegment metasegment,String tableName, List<String> columnNamesList,
-										MetadataStore metadataStore) {
+	public void checkAndUpdateMetadata(Metasegment metasegment,
+			String tableName, List<String> columnNamesList,
+			MetadataStore metadataStore) {
 		try {
 			if (metasegment != null) {
 				if (metasegment.getEntitees() != null)
 					for (Entitee entity : metasegment.getEntitees()) {
-						if (entity.getEntityName() == null || entity.getEntityName().length() == 0)
+						if (entity.getEntityName() == null
+								|| entity.getEntityName().length() == 0)
 							entity.setEntityName(tableName);
 					}
 			}
-			Metasegment metaseg = metadataStore.getAdaptorMetasegment("SQL_ADAPTOR", "SQL", tableName);
+			Metasegment metaseg = metadataStore.getAdaptorMetasegment(
+					AdaptorConfig.getInstance().getName(),
+					JdbcConstants.METADATA_SCHEMA_TYPE, tableName);
+			
 			if (metaseg != null && metaseg.getEntitees() != null) {
 				for (Entitee entity : metaseg.getEntitees())
-					if (entity == null || (entity.getAttributes().size() != columnNamesList.size()))
+					if (entity == null
+							|| (entity.getAttributes().size() != columnNamesList
+									.size()))
 						metadataStore.put(metasegment);
 			} else
 				metadataStore.put(metasegment);
+			
 		} catch (MetadataAccessException e) {
 			e.printStackTrace();
 		}

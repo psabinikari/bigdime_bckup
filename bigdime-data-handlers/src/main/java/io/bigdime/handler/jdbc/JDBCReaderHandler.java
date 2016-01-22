@@ -64,7 +64,7 @@ import javax.sql.DataSource;
 public class JDBCReaderHandler extends AbstractHandler {
 
 	private static final AdaptorLogger logger = new AdaptorLogger(
-			LoggerFactory.getLogger(JDBCReaderHandler2.class));
+			LoggerFactory.getLogger(JDBCReaderHandler.class));
 
 	@Autowired
 	private DataSource sqlDataSource;
@@ -93,11 +93,11 @@ public class JDBCReaderHandler extends AbstractHandler {
 	private Metasegment metasegment;
 
 	private JdbcMetadataManagement jdbcMetadataManagment;
-	private JdbcRuntimeManagement jdbcRuntimeManagement;
+	//private JdbcRuntimeManagement jdbcRuntimeManagement;
 	private String handlerPhase = null;
 	private String jsonStr = null;
 
-	private int rowCount = 0;
+	//private int rowCount = 0;
 
 	@Override
 	public void build() throws AdaptorConfigurationException {
@@ -145,6 +145,8 @@ public class JDBCReaderHandler extends AbstractHandler {
 		Status adaptorThreadStatus = null;
 		try {
 			adaptorThreadStatus = preProcess();
+		} catch (RuntimeInfoStoreException e) {
+			e.printStackTrace();
 		} catch (JSONException e) {
 			e.printStackTrace();
 		} catch (JdbcHandlerException e) {
@@ -174,14 +176,15 @@ public class JDBCReaderHandler extends AbstractHandler {
 	 * @return
 	 * @throws JdbcHandlerException
 	 * @throws JSONException
+	 * @throws RuntimeInfoStoreException
 	 */
 	public ActionEvent.Status preProcess() throws JdbcHandlerException,
-			JSONException {
+			JSONException, RuntimeInfoStoreException {
 		// Get configured table details..
 		boolean processFlag = false;
 		jdbcTemplate = new JdbcTemplate(sqlDataSource);
 		jdbcMetadataManagment = new JdbcMetadataManagement();
-		jdbcRuntimeManagement = new JdbcRuntimeManagement();
+		//jdbcRuntimeManagement = new JdbcRuntimeManagement();
 		if (!StringUtils.isEmpty(sql)) {
 			// format Query...
 
@@ -216,18 +219,36 @@ public class JDBCReaderHandler extends AbstractHandler {
 					jdbcInputDescriptor.getEntityName(),
 					jdbcInputDescriptor.getColumnList(), metadataStore);
 			// Check if Runtime details Exists..
-			if (jdbcRuntimeManagement.findRTIEntryExistence(
+			
+			/*if (jdbcRuntimeManagement.findRTIEntryExistence(
 					jdbcInputDescriptor.getEntityName(),
 					jdbcInputDescriptor.getIncrementedColumnType(),
-					runTimeInfoStore) == JdbcConstants.INTEGER_CONSTANT_ZERO) {
+					runTimeInfoStore) == JdbcConstants.INTEGER_CONSTANT_ZERO) {*/
+				if (getOneQueuedRuntimeInfo(runTimeInfoStore,jdbcInputDescriptor.getEntityName()) == null){
 
 				// Insert into Runtime Data...
 				if (jdbcInputDescriptor.getIncrementedBy() != null
 						&& jdbcInputDescriptor.getIncrementedBy().length() > JdbcConstants.INTEGER_CONSTANT_ZERO) {
-					boolean runtimeInsertionFlag = jdbcRuntimeManagement
-							.insertRuntimeEntry(driverName,
-									jdbcInputDescriptor,
-									initialRuntimeDateEntry, runTimeInfoStore);
+					
+					/*  boolean runtimeInsertionFlag = jdbcRuntimeManagement
+					  .insertRuntimeEntry(driverName, jdbcInputDescriptor,
+					  initialRuntimeDateEntry, runTimeInfoStore);*/
+					HashMap<String, String> properties = new HashMap<String, String>();
+					if (driverName
+							.equalsIgnoreCase(JdbcConstants.ORACLE_DRIVER_NAME)
+							&& jdbcInputDescriptor.getIncrementedColumnType()
+									.equalsIgnoreCase("DATE"))
+						properties.put(jdbcInputDescriptor.getIncrementedBy(),
+								initialRuntimeDateEntry);
+					else
+						properties.put(jdbcInputDescriptor.getIncrementedBy(),
+								JdbcConstants.INTEGER_CONSTANT_ZERO + "");
+
+					boolean runtimeInsertionFlag = updateRuntimeInfo(
+							runTimeInfoStore,
+							jdbcInputDescriptor.getEntityName(),
+							jdbcInputDescriptor.getIncrementedColumnType(),
+							RuntimeInfoStore.Status.QUEUED, properties);
 
 					logger.info(
 							"JDBC Reader Handler inserting Runtime data",
@@ -250,6 +271,21 @@ public class JDBCReaderHandler extends AbstractHandler {
 		} else
 			return Status.BACKOFF;
 	}
+	
+	private String getCurrentColumnValue() {
+		String currentIncrementalColumnValue = null;
+		RuntimeInfo runtimeInfo = null;
+		try {
+			runtimeInfo = getOneQueuedRuntimeInfo(runTimeInfoStore,jdbcInputDescriptor.getEntityName());
+		} catch (RuntimeInfoStoreException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		if (runtimeInfo != null)
+			currentIncrementalColumnValue = runtimeInfo.getProperties().get(
+					jdbcInputDescriptor.getIncrementedBy());
+		return currentIncrementalColumnValue;
+	}
 
 	/**
 	 * This methods fetches the number of records from the source.
@@ -259,12 +295,17 @@ public class JDBCReaderHandler extends AbstractHandler {
 	public boolean processRecords() {
 		boolean splitByFlag = true;
 		jdbcTemplate = new JdbcTemplate(sqlDataSource);
-		String repoColumnValue = jdbcRuntimeManagement.findColumnValueByTableNameFromRTI(jdbcInputDescriptor,runTimeInfoStore);
-		logger.debug("JDBC Reader Handler in process records","Latest Incremented Repository Value= {}", repoColumnValue);
+		/*String repoColumnValue = jdbcRuntimeManagement
+				.findColumnValueByTableNameFromRTI(jdbcInputDescriptor,
+						runTimeInfoStore);*/
+		String repoColumnValue = getCurrentColumnValue();
+		logger.debug("JDBC Reader Handler in process records",
+				"Latest Incremented Repository Value= {}", repoColumnValue);
 		if (repoColumnValue != null)
 			columnValue = repoColumnValue;
 
-		logger.debug("JDBC Reader Handler in processing ","actual sql={} latestIncrementalValue={}", sql, columnValue);
+		logger.debug("JDBC Reader Handler in processing ",
+				"actual sql={} latestIncrementalValue={}", sql, columnValue);
 		List<Map<String, Object>> rows = new ArrayList<Map<String, Object>>();
 		jdbcTemplate.setQueryTimeout(120);
 		long startTime = System.currentTimeMillis();
@@ -272,7 +313,8 @@ public class JDBCReaderHandler extends AbstractHandler {
 			if (columnValue != null) {
 				try {
 					if (driverName.indexOf(JdbcConstants.ORACLE_DRIVER) > JdbcConstants.INTEGER_CONSTANT_ZERO
-							&& jdbcInputDescriptor.getIncrementedColumnType().equalsIgnoreCase("DATE")) {
+							&& jdbcInputDescriptor.getIncrementedColumnType()
+									.equalsIgnoreCase("DATE")) {
 						rows = jdbcTemplate
 								.queryForList(
 										sql,
@@ -281,7 +323,8 @@ public class JDBCReaderHandler extends AbstractHandler {
 														DATE_FORMAT)).parse(
 														columnValue).getTime()) });
 					} else
-						rows = jdbcTemplate.queryForList(sql,new Object[] { columnValue });
+						rows = jdbcTemplate.queryForList(sql,
+								new Object[] { columnValue });
 				} catch (DataAccessException | ParseException e) {
 					logger.alert(
 							ALERT_TYPE.INGESTION_FAILED,
@@ -291,32 +334,51 @@ public class JDBCReaderHandler extends AbstractHandler {
 							columnValue, e.toString());
 				}
 			} else
-				rows = jdbcTemplate.queryForList(sql,new Object[] { JdbcConstants.INTEGER_CONSTANT_ZERO });
+				rows = jdbcTemplate.queryForList(sql,
+						new Object[] { JdbcConstants.INTEGER_CONSTANT_ZERO });
 		} else {
 			rows = jdbcTemplate.queryForList(sql);
 		}
 		long endTime = System.currentTimeMillis();
-		logger.info("JDBC Reader Handler during processing records",
+		logger.info(
+				"JDBC Reader Handler during processing records",
 				"Time taken to fetch records from table ={} from a columnValue={} with a fetchSize={} is {} milliseconds",
 				jdbcInputDescriptor.getEntityName(), columnValue, splitSize,
 				(endTime - startTime));
-		logger.debug("JDBC Reader Handler during processing records","columns in the tableName={} are {}",
-				jdbcInputDescriptor.getEntityName(),jdbcInputDescriptor.getColumnList());
+		logger.debug("JDBC Reader Handler during processing records",
+				"columns in the tableName={} are {}",
+				jdbcInputDescriptor.getEntityName(),
+				jdbcInputDescriptor.getColumnList());
 		// Process each row to HDFS...
 		if (rows.size() > JdbcConstants.INTEGER_CONSTANT_ZERO)
 			processEachRecord(rows);
 		else {
-			logger.info("JDBC Reader Handler during processing records","No more rows found for query={}", sql);
+			logger.info("JDBC Reader Handler during processing records",
+					"No more rows found for query={}", sql);
 			splitByFlag = false;
 		}
 		// Assigning the current incremental value..
 		if (jdbcInputDescriptor.getIncrementedBy().length() > JdbcConstants.INTEGER_CONSTANT_ZERO
 				&& highestIncrementalColumnValue != null) {
-			boolean highestValueStatus = jdbcRuntimeManagement.saveCurrentHighestColumnValue(jdbcInputDescriptor,
-								highestIncrementalColumnValue,runTimeInfoStore);
-
-			logger.info("JDBC Reader Handler saved highest incremental value","incremental column saved status(true/false)?",
-						highestValueStatus);
+			/*boolean highestValueStatus = jdbcRuntimeManagement
+					.saveCurrentHighestColumnValue(jdbcInputDescriptor,
+							highestIncrementalColumnValue, runTimeInfoStore);*/
+			HashMap<String, String> properties = new HashMap<String, String>();
+			properties.put(jdbcInputDescriptor.getIncrementedBy(), highestIncrementalColumnValue);
+			boolean highestValueStatus=false;
+			try {
+				highestValueStatus = updateRuntimeInfo(
+						runTimeInfoStore,
+						jdbcInputDescriptor.getEntityName(),
+						jdbcInputDescriptor.getIncrementedColumnType(),
+						RuntimeInfoStore.Status.QUEUED, properties);
+			} catch (RuntimeInfoStoreException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			logger.info("JDBC Reader Handler saved highest incremental value",
+					"incremental column saved status(true/false)?",
+					highestValueStatus);
 			columnValue = highestIncrementalColumnValue;
 		}
 		if (jdbcInputDescriptor.getIncrementedBy().length() == JdbcConstants.INTEGER_CONSTANT_ZERO
@@ -343,8 +405,11 @@ public class JDBCReaderHandler extends AbstractHandler {
 				actionEvent.setBody(body);
 				actionEvents.add(actionEvent);
 
-				highestIncrementalColumnValue = row.get(jdbcInputDescriptor.getColumnList().get(
-								jdbcInputDescriptor.getColumnList().indexOf(jdbcInputDescriptor.getColumnName())))+ "";
+				highestIncrementalColumnValue = row.get(jdbcInputDescriptor
+						.getColumnList().get(
+								jdbcInputDescriptor.getColumnList().indexOf(
+										jdbcInputDescriptor.getColumnName())))
+						+ "";
 
 			}
 		}
