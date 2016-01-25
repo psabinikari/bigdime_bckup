@@ -107,7 +107,7 @@ public class AdaptorRuntimeInfoStoreImpl implements
 			String descriptor) throws RuntimeInfoStoreException {
 		if (adaptorName == null || entityName == null || descriptor == null) {
 			logger.warn(SOURCENAME, "get entry",
-					"Unable to get entry due to invalid arguments");
+					"Unable to get entry due to invalid arguments adaptorName={}, entityName={},descriptor={}",adaptorName,entityName,descriptor);
 			throw new IllegalArgumentException(
 					"Provided argument are not valid");
 
