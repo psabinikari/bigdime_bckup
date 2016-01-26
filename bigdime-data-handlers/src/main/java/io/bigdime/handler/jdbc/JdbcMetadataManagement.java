@@ -32,15 +32,13 @@ public class JdbcMetadataManagement {
 			LoggerFactory.getLogger(JdbcMetadataManagement.class));
 
 	/**
-	 * 
+	 * Forms Metasegment object by retrieving from source data base.
 	 * @param jdbcInputDescriptor
 	 * @param jdbcTemplate
 	 * @return
 	 */
 	public Metasegment getSourceMetadata(
 			JdbcInputDescriptor jdbcInputDescriptor, JdbcTemplate jdbcTemplate) {
-		// jdbcTemplate.setFetchSize(100);
-		// jdbcTemplate.setMaxRows(100);
 		Metasegment metaSegmnt = (Metasegment) jdbcTemplate.query(
 				JdbcConstants.SELECT_FROM + jdbcInputDescriptor.getEntityName(),
 				new JdbcMetadata());
@@ -48,7 +46,8 @@ public class JdbcMetadataManagement {
 	}
 
 	/**
-	 * 
+	 * Gets the column List
+	 * @param jdbcInputDescriptor
 	 * @param metasegment
 	 * @return
 	 */
@@ -75,7 +74,7 @@ public class JdbcMetadataManagement {
 	}
 
 	/**
-	 * 
+	 * Sets Columns List
 	 * @param jdbcInputDescriptor
 	 * @param metasegment
 	 */
@@ -125,6 +124,13 @@ public class JdbcMetadataManagement {
 					"Provided argument:metasegment object in getColumnList() cannot be null");
 	}
 
+	/**
+	 * This will insert/update the metadata details.
+	 * @param metasegment
+	 * @param tableName
+	 * @param columnNamesList
+	 * @param metadataStore
+	 */
 	public void checkAndUpdateMetadata(Metasegment metasegment,
 			String tableName, List<String> columnNamesList,
 			MetadataStore metadataStore) {

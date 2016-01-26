@@ -35,11 +35,14 @@ import io.bigdime.core.AdaptorConfigurationException;
 import io.bigdime.core.HandlerException;
 import io.bigdime.core.InvalidValueConfigurationException;
 import io.bigdime.core.commons.AdaptorLogger;
+import io.bigdime.core.commons.PropertyHelper;
+import io.bigdime.core.config.AdaptorConfig;
 import io.bigdime.core.config.AdaptorConfigConstants;
 import io.bigdime.core.constants.ActionEventHeaderConstants;
 import io.bigdime.core.handler.AbstractHandler;
 import io.bigdime.core.handler.HandlerJournal;
 import io.bigdime.core.handler.SimpleJournal;
+import io.bigdime.handler.constants.WebHDFSWriterHandlerConstants;
 
 /**
  * 
@@ -77,6 +80,7 @@ public class DataCleansingHandler extends AbstractHandler {
 		@SuppressWarnings("unchecked")
 		Entry<String, String> srcDescInputs = (Entry<String, String>) getPropertyMap()
 				.get(AdaptorConfigConstants.SourceConfigConstants.SRC_DESC);
+		
 		if (srcDescInputs == null) {
 			throw new InvalidValueConfigurationException(
 					"src-desc can't be null");
@@ -262,20 +266,15 @@ public class DataCleansingHandler extends AbstractHandler {
 				if (datePartition != null) {
 					actionEvent.getHeaders().put(
 							ActionEventHeaderConstants.DATE, datePartition);
-					// actionEvent.getHeaders().put(ActionEventHeaderConstants.INPUT_DESCRIPTOR,datePartition);
 				} else {
 					actionEvent.getHeaders()
 							.put(ActionEventHeaderConstants.DATE,
 									new SimpleDateFormat("YYYYMMDD")
 											.format(new Date()));
-					// actionEvent.getHeaders().put(ActionEventHeaderConstants.INPUT_DESCRIPTOR,new
-					// SimpleDateFormat("YYYYMMDD").format(new Date()));
+					
 				}
 
-				// below are added just to test DVS
-				// actionEvent.getHeaders().put(ActionEventHeaderConstants.SCHEMA_TYPE_HIVE,
-				// "hive");
-				// actionEvent.getHeaders().put(ActionEventHeaderConstants.ENTITY_NAME,jdbcInputDescriptor.getEntityName());
+				
 
 				actionEvent.getHeaders().put(
 						ActionEventHeaderConstants.HIVE_HOST_NAME,
@@ -287,7 +286,7 @@ public class DataCleansingHandler extends AbstractHandler {
 				actionEvent.getHeaders().put(
 						ActionEventHeaderConstants.HIVE_TABLE_NAME,
 						jdbcInputDescriptor.getEntityName());
-
+                
 				/*
 				 * Check for outputChannel map. get the eventList of channels.
 				 * check the criteria and put the message.

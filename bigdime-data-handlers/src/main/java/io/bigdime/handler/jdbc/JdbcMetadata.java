@@ -5,6 +5,7 @@ import io.bigdime.adaptor.metadata.model.Entitee;
 import io.bigdime.adaptor.metadata.model.Metasegment;
 import io.bigdime.alert.LoggerFactory;
 import io.bigdime.core.commons.AdaptorLogger;
+import io.bigdime.core.config.AdaptorConfig;
 
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -61,22 +62,22 @@ public class JdbcMetadata implements ResultSetExtractor<Metasegment> {
 			Entitee entities = new Entitee();
 			entities.setEntityName(tableName);
 			entities.setEntityLocation("/data/sql/raw/tableName");
-			entities.setDescription("HDFS LOCATION");
+			entities.setDescription(AdaptorConfig.getInstance().getDescription());
 			entities.setVersion(1.0);
 			entities.setAttributes(AttributesSet);
 			entitySet.add(entities);
 
 			metasegment = new Metasegment();
-			metasegment.setAdaptorName("SQL_ADAPTOR");
-			metasegment.setSchemaType("HIVE");
+			metasegment.setAdaptorName(AdaptorConfig.getInstance().getName());
+			metasegment.setSchemaType(JdbcConstants.METADATA_SCHEMA_TYPE);
 			metasegment.setEntitees(entitySet);
 			metasegment.setDatabaseName("SQL");
 			metasegment.setDatabaseLocation("");
 			metasegment.setRepositoryType("TARGET");
 			metasegment.setIsDataSource("Y");
 
-			metasegment.setCreatedBy("SQL_ADAPTOR");
-			metasegment.setUpdatedBy("SQL_ADAPTOR");
+			metasegment.setCreatedBy(AdaptorConfig.getInstance().getName());
+			metasegment.setUpdatedBy(AdaptorConfig.getInstance().getName());
 
 		}
 		return metasegment;
