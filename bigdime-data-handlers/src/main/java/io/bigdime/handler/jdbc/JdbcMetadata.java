@@ -69,7 +69,7 @@ public class JdbcMetadata implements ResultSetExtractor<Metasegment> {
 
 			metasegment = new Metasegment();
 			metasegment.setAdaptorName(AdaptorConfig.getInstance().getName());
-			metasegment.setSchemaType(JdbcConstants.METADATA_SCHEMA_TYPE);
+			metasegment.setSchemaType("HIVE");
 			metasegment.setEntitees(entitySet);
 			metasegment.setDatabaseName("SQL");
 			metasegment.setDatabaseLocation("");

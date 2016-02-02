@@ -82,6 +82,8 @@ public class HiveMetaDataHandler extends AbstractHandler {
 			Preconditions.checkArgument(!actionEvents.isEmpty(), "eventList in HandlerContext can't be empty");
 			ActionEvent actionEvent = actionEvents.get(0);
 			String entityName = actionEvent.getHeaders().get(ActionEventHeaderConstants.ENTITY_NAME);
+			if (entityName == null)
+				entityName = actionEvent.getHeaders().get(ActionEventHeaderConstants.ENTITY_NAME.toUpperCase());
 			Preconditions.checkNotNull(entityName,"EntityName cannot be null");
 
 			Metasegment metasegment = metadataStore.getAdaptorMetasegment(AdaptorConfig.getInstance().getName(), "HIVE", entityName);
@@ -91,6 +93,9 @@ public class HiveMetaDataHandler extends AbstractHandler {
 			String partitionValues = actionEvent.getHeaders().get(ActionEventHeaderConstants.HIVE_PARTITION_VALUES);
 			String partitionLocation = actionEvent.getHeaders().get(ActionEventHeaderConstants.HIVE_PARTITION_LOCATION);
 			String hdfsBasePath = actionEvent.getHeaders().get(ActionEventHeaderConstants.HDFS_PATH);
+			
+			actionEvent.getHeaders().put(ActionEventHeaderConstants.HIVE_DB_NAME, metasegment.getDatabaseName());
+			actionEvent.getHeaders().put(ActionEventHeaderConstants.HIVE_TABLE_NAME, entityName);
 
 			createDatabase(metasegment);
 			createTable(metasegment.getDatabaseName(),entitee,actionEvent);
@@ -105,15 +110,15 @@ public class HiveMetaDataHandler extends AbstractHandler {
 			}
 		} catch (MetadataAccessException e) {
 			logger.alert(ALERT_TYPE.OTHER_ERROR, ALERT_CAUSE.APPLICATION_INTERNAL_ERROR, ALERT_SEVERITY.BLOCKER,
-					"\"hive metadata handler exception \" error={}", e.toString());			
+					"\"hive metadata handler exception \" error={}", e);			
 			throw new HandlerException(e);
 		} catch (HCatException e) {
 			logger.alert(ALERT_TYPE.OTHER_ERROR, ALERT_CAUSE.APPLICATION_INTERNAL_ERROR, ALERT_SEVERITY.BLOCKER,
-					"\"hive metadata handler exception \" error={}", e.toString());			
+					"\"hive metadata handler exception \" error={}", e);			
 			// TODO : in case of exceptions from hive simply log and send them alerts.
 		} catch (Exception e) {
 			logger.alert(ALERT_TYPE.OTHER_ERROR, ALERT_CAUSE.APPLICATION_INTERNAL_ERROR, ALERT_SEVERITY.BLOCKER,
-					"\"hive metadata handler exception \" error={}", e.toString());
+					"\"hive metadata handler exception \" error={}", e);
 			throw new HandlerException(e);
 		}
 		return Status.READY;
@@ -123,7 +128,7 @@ public class HiveMetaDataHandler extends AbstractHandler {
 	 * @throws HCatException 
 	 * 
 	 */
-	private void createDatabase(Metasegment metasegment) throws HCatException {
+	private synchronized void createDatabase(Metasegment metasegment) throws HCatException {
 		hiveDBManager = HiveDBManger.getInstance(props);
 		DatabaseSpecification.Builder databaseSpecificationBuilder = new DatabaseSpecification.Builder(metasegment.getDatabaseName());
 		DatabaseSpecification  databaseSpecification = databaseSpecificationBuilder.location(metasegment.getDatabaseLocation()).scheme(hdfsScheme).build();
@@ -144,7 +149,7 @@ public class HiveMetaDataHandler extends AbstractHandler {
 	 * @param actionEvent
 	 * @throws HCatException
 	 */
-	private void createTable(String dbName,Entitee entitee,ActionEvent actionEvent) throws HCatException {
+	private synchronized void createTable(String dbName,Entitee entitee,ActionEvent actionEvent) throws HCatException {
 		if(isTableCreated(dbName,entitee.getEntityName())){
 			return;
 		}
@@ -152,7 +157,8 @@ public class HiveMetaDataHandler extends AbstractHandler {
 		List<Column> columns = new ArrayList<Column>();
 		
 		Column column = null;
-		String hiveTableLocation = actionEvent.getHeaders().get(ActionEventHeaderConstants.HIVE_TABLE_LOCATION);
+		//String hiveTableLocation = actionEvent.getHeaders().get(ActionEventHeaderConstants.HIVE_TABLE_LOCATION);
+		String hiveTableLocation = actionEvent.getHeaders().get(ActionEventHeaderConstants.HDFS_PATH);
 		String fieldsTerminatedBy = actionEvent.getHeaders().get(ActionEventHeaderConstants.FIELDS_TERMINATED_BY);
 		String linesTerminatedBy = actionEvent.getHeaders().get(ActionEventHeaderConstants.LINES_TERMINATED_BY);
 		String partitionKeys = actionEvent.getHeaders().get(ActionEventHeaderConstants.HIVE_PARTITION_NAMES);

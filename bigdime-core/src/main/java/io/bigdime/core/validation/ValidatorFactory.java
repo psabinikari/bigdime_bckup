@@ -10,10 +10,14 @@ import java.util.Set;
 import javax.annotation.PostConstruct;
 
 import org.reflections.Reflections;
+import org.springframework.beans.BeansException;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
 
 import io.bigdime.alert.LoggerFactory;
 import io.bigdime.core.AdaptorConfigurationException;
+import io.bigdime.core.Handler;
 import io.bigdime.core.commons.AdaptorLogger;
 
 /**
@@ -31,6 +35,9 @@ public final class ValidatorFactory {
 	private Set<Class<?>> annotated;
 	private Map<String, Class<? extends Validator>> validators = new HashMap<>();
 
+	@Autowired
+	private ApplicationContext context;
+	
 	private ValidatorFactory() throws AdaptorConfigurationException {
 
 	}
@@ -69,8 +76,9 @@ public final class ValidatorFactory {
 			throw new AdaptorConfigurationException("no validators found for type=" + validationType);
 		}
 		try {
-			return validators.get(validationType).newInstance();
-		} catch (InstantiationException | IllegalAccessException e) {
+			
+			return context.getBean(validators.get(validationType));
+		} catch (BeansException e) {
 			throw new AdaptorConfigurationException(e);
 		}
 	}

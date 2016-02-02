@@ -12,6 +12,7 @@ public class JdbcConstants {
 	public static String METADATA_SCHEMA_TYPE="HIVE";
 	public static int INTEGER_CONSTANT_NONZERO = 1;
 	public static int INTEGER_CONSTANT_ZERO = 0;
+	public static String HIVE_DB_NAME="hiveDBName";
 	
 	
 

@@ -4,28 +4,22 @@
 package io.bigdime.validation;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.StringWriter;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Properties;
+import java.util.Set;
 
-import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
-import org.apache.http.HttpResponse;
+import org.apache.hadoop.hive.conf.HiveConf;
+import org.apache.hive.hcatalog.common.HCatException;
+import org.apache.hive.hcatalog.data.HCatRecord;
+import org.apache.hive.hcatalog.data.transfer.DataTransferFactory;
+import org.apache.hive.hcatalog.data.transfer.HCatReader;
+import org.apache.hive.hcatalog.data.transfer.ReaderContext;
 import org.apache.http.client.ClientProtocolException;
-
-/**
- * RecordCountValidator class is to perform whether hdfs record count matches source record count or not
- * 
- * record count mismatches --- validation fail
- * otherwise, validation success
- * 
- * @author Rita Liu
- */
-
-
-
-
-
-
+import org.springframework.stereotype.Component;
 
 import io.bigdime.alert.Logger;
 import io.bigdime.alert.LoggerFactory;
@@ -38,22 +32,22 @@ import io.bigdime.core.validation.Factory;
 import io.bigdime.core.validation.ValidationResponse;
 import io.bigdime.core.validation.Validator;
 import io.bigdime.core.validation.ValidationResponse.ValidationResult;
-import io.bigdime.libs.hdfs.WebHdfs;
-import io.bigdime.libs.hdfs.WebHDFSConstants;
+import io.bigdime.libs.hive.constants.HiveClientConstants;
+import io.bigdime.libs.hive.table.HiveTableManger;
 import io.bigdime.validation.common.AbstractValidator;
 
-@Factory(id = "record_count", type = RecordCountValidator.class)
-
 /**
- * Performs validation by comparing comparing expected(from event header) and actual
- * record count(from hdfs).
+ * RecordCountValidator class is to perform whether hdfs record count matches source record count or not
+ * 
+ * record count mismatches --- validation fail
+ * otherwise, validation success
  * 
  * @author Rita Liu
- * 
  */
-public class RecordCountValidator implements Validator {
 
-	private WebHdfs webHdfs;
+@Factory(id = "record_count", type = RecordCountValidator.class)
+@Component
+public class RecordCountValidator implements Validator {
 
 	private static final Logger logger = LoggerFactory.getLogger(RecordCountValidator.class);
 	
@@ -74,34 +68,24 @@ public class RecordCountValidator implements Validator {
 		ValidationResponse validationPassed = new ValidationResponse();
 		AbstractValidator commonCheckValidator = new AbstractValidator();
 		validationPassed.setValidationResult(ValidationResult.FAILED);
-		String host = actionEvent.getHeaders().get(ActionEventHeaderConstants.HOST_NAMES);
-		String portString = actionEvent.getHeaders().get(ActionEventHeaderConstants.PORT);
-		String userName = actionEvent.getHeaders().get(ActionEventHeaderConstants.USER_NAME);
+		int port = 0;
+		String hiveHost = actionEvent.getHeaders().get(ActionEventHeaderConstants.HIVE_HOST_NAME);
+		String portString = actionEvent.getHeaders().get(ActionEventHeaderConstants.HIVE_PORT);
 		String srcRCString = actionEvent.getHeaders().get(ActionEventHeaderConstants.SOURCE_RECORD_COUNT);
-		String hdfsBasePath = actionEvent.getHeaders().get(ActionEventHeaderConstants.HDFS_PATH);
-		String hdfsFileName = actionEvent.getHeaders().get(ActionEventHeaderConstants.HDFS_FILE_NAME);
+		String hiveDBName = actionEvent.getHeaders().get(ActionEventHeaderConstants.HIVE_DB_NAME);
+		String hiveTableName = actionEvent.getHeaders().get(ActionEventHeaderConstants.HIVE_TABLE_NAME);
+		String hivePartitionNames = actionEvent.getHeaders().get(ActionEventHeaderConstants.HIVE_PARTITION_NAMES);
 		String hivePartitionValues = actionEvent.getHeaders().get(ActionEventHeaderConstants.HIVE_PARTITION_VALUES);
 		
-		
-		String partitionPath = "";
-		String hdfsCompletedPath = "";
 		int sourceRecordCount = 0;
 
-		commonCheckValidator.checkNullStrings(ActionEventHeaderConstants.HOST_NAMES, host);
-		commonCheckValidator.checkNullStrings(ActionEventHeaderConstants.PORT, portString);
-		commonCheckValidator.checkNullStrings(ActionEventHeaderConstants.USER_NAME, userName);
-		
+		commonCheckValidator.checkNullStrings(ActionEventHeaderConstants.HIVE_HOST_NAME, hiveHost);
+		commonCheckValidator.checkNullStrings(ActionEventHeaderConstants.HIVE_PORT, portString);
 		try {
-			int port = Integer.parseInt(portString);
-			if (webHdfs == null) {
-				webHdfs = WebHdfs.getInstance(host, port)
-						.addHeader(WebHDFSConstants.CONTENT_TYPE,WebHDFSConstants.APPLICATION_OCTET_STREAM)
-						.addParameter(WebHDFSConstants.USER_NAME, userName)
-						.addParameter("overwrite", "false");
-			}
+			 port = Integer.parseInt(portString);
 		} catch (NumberFormatException e) {
 			logger.warn(AdaptorConfig.getInstance().getAdaptorContext().getAdaptorName(), "NumberFormatException",
-					"Illegal port number input while parsing string to integer");
+					"Illegal port number input{} while parsing string to integer", portString);
 			throw new NumberFormatException();
 		}
 
@@ -113,61 +97,41 @@ public class RecordCountValidator implements Validator {
 					"Illegal source record count input while parsing string to integer");
 			throw new NumberFormatException();
 		}
-		commonCheckValidator.checkNullStrings(ActionEventHeaderConstants.HDFS_PATH, hdfsBasePath);
-		commonCheckValidator.checkNullStrings(ActionEventHeaderConstants.HDFS_FILE_NAME, hdfsFileName);
-		if (StringUtils.isNotBlank(hivePartitionValues)) {
-			String[] partitionList = hivePartitionValues.split(DataConstants.COMMA);
-			StringBuilder stringBuilder = new StringBuilder();
-			for (int i = 0; i < partitionList.length; i++) {
-				stringBuilder.append(partitionList[i].trim() + DataConstants.SLASH);
+		commonCheckValidator.checkNullStrings(ActionEventHeaderConstants.HIVE_DB_NAME, hiveDBName);
+		commonCheckValidator.checkNullStrings(ActionEventHeaderConstants.HIVE_TABLE_NAME, hiveTableName);
+		Map<String, String> partitionColumnsMap = new LinkedHashMap<String, String>();
+		if (StringUtils.isNotBlank(hivePartitionNames) && StringUtils.isNotBlank(hivePartitionValues)) {
+			String[] partitionNameList = hivePartitionNames.split(DataConstants.COMMA);
+			String[] partitionValueList = hivePartitionValues.split(DataConstants.COMMA);
+			for (int i = 0; i < partitionNameList.length; i++) {
+				partitionColumnsMap.put(partitionNameList[i].trim(), partitionValueList[i].trim());
 			}
-			partitionPath = stringBuilder.toString();
-			hdfsCompletedPath = hdfsBasePath + partitionPath + hdfsFileName;
-		} else {
-			hdfsCompletedPath = hdfsBasePath + hdfsFileName;
 		}
-
 		int hdfsRecordCount = 0;
+		Properties props = new Properties();
+		props.put(HiveConf.ConfVars.METASTOREURIS, "thrift://" + hiveHost
+				+ DataConstants.COLON + port);
 		try {
-			hdfsRecordCount = getHdfsRecordCount(hdfsCompletedPath);
-		} catch (ClientProtocolException e) {
-			logger.warn(AdaptorConfig.getInstance().getAdaptorContext().getAdaptorName(), "ClientProtocolException",
-					"Exception occurred while getting hdfs record count, cause: " + e.getMessage());
-		} catch (IOException ex) {
-			logger.warn(AdaptorConfig.getInstance().getAdaptorContext().getAdaptorName(), "IOException",
-					"Exception occurred while getting hdfs record count, cause: " + ex.getMessage());
+			hdfsRecordCount = getHdfsRecordCount(props, hiveDBName, hiveTableName, partitionColumnsMap, 
+								hiveHost, port, getHAProperties(actionEvent));
+		} catch (HCatException e) {
+			logger.warn(AdaptorConfig.getInstance().getAdaptorContext()
+					.getAdaptorName(), "HCatException",
+					"Exception occurred while getting record count from hive, cause: "
+							+ e.getCause());
+			throw new DataValidationException(
+					"Exception during getting record count from hive");
 		}
-		logger.debug(AdaptorConfig.getInstance().getName(), "performing validation",
-				"hdfsCompletedPath={} sourceRecordCount={} hdfsRecordCount={}", hdfsCompletedPath, sourceRecordCount,
-				hdfsRecordCount);
 
 		if (sourceRecordCount == hdfsRecordCount) {
 			logger.info(AdaptorConfig.getInstance().getAdaptorContext().getAdaptorName(), "Record count matches",
-					"Hdfs record count({}) is same as source record count({}).", hdfsRecordCount, sourceRecordCount);
+					"Hdfs record count({}) is same as source record count({}), partitionMap {}", hdfsRecordCount, sourceRecordCount, partitionColumnsMap);
 			validationPassed.setValidationResult(ValidationResult.PASSED);
 		} else {
-			String checksumErrorFilePath = "RCError" +DataConstants.SLASH + AdaptorConfig.getInstance().getAdaptorContext().getAdaptorName()
-					+ DataConstants.SLASH + partitionPath;
-			// Take out /webhdfs/v1 from hdfsBasePath
-			String hdfsDir = hdfsBasePath.substring(11);
 			logger.warn(AdaptorConfig.getInstance().getAdaptorContext().getAdaptorName(),
-					"Record count mismatches, Hdfs file moved",
-					"Hdfs record count({}) is not same as source record count({}) and hdfsCompletedPath ={}.errorFilePath ={}", hdfsRecordCount,
-					sourceRecordCount,hdfsCompletedPath,hdfsBasePath + checksumErrorFilePath);
-			
-			try {
-				if (!checkErrorRecordCountDirExists(hdfsBasePath + checksumErrorFilePath)) {
-					if (makeErrorRecordCountDir(hdfsBasePath + checksumErrorFilePath)) {
-						moveErrorRecordCountFile(hdfsCompletedPath, hdfsDir + checksumErrorFilePath);
-					}
-				} else {
-					moveErrorRecordCountFile(hdfsCompletedPath, hdfsDir + checksumErrorFilePath);
-				}
-
-			} catch (IOException e) {
-				logger.warn(AdaptorConfig.getInstance().getAdaptorContext().getAdaptorName(), "Exception occurs",
-						"Failed to move to provided location: " + hdfsDir + checksumErrorFilePath);
-			}
+					"Record count mismatches",
+					"Hdfs record count({}) is not same as source record count({}), partitionMap {}", hdfsRecordCount,
+					sourceRecordCount, partitionColumnsMap);
 			validationPassed.setValidationResult(ValidationResult.FAILED);
 		}
 
@@ -179,80 +143,79 @@ public class RecordCountValidator implements Validator {
 	 * 
 	 * @param fileName
 	 *            hdfs file name
+	 * @throws DataValidationException 
 	 * @throws IOException
 	 * @throws ClientProtocolException
 	 * 
 	 */
-	private int getHdfsRecordCount(String fileName) throws ClientProtocolException, IOException {
-
-		HttpResponse response = webHdfs.openFile(fileName);
-
-		InputStream responseStream = response.getEntity().getContent();
-
-		StringWriter writer = new StringWriter();
-
-		IOUtils.copy(responseStream, writer);
-
-		String theString = writer.toString();
-
-		int hdfsRecordCount = (theString.split(System.getProperty("line.separator")).length);
-
-		webHdfs.releaseConnection();
-
-		responseStream.close();
-
-		writer.close();
-
-		return hdfsRecordCount;
-	}
-
-	/**
-	 * This is to check errorRecordCountDir exists or not in hdfs
-	 * 
-	 * @param filePath
-	 * @return true if errorRecordCountDir exists else return false
-	 * @throws IOException
-	 */
-	private boolean checkErrorRecordCountDirExists(String filePath) throws IOException {
-		HttpResponse response = webHdfs.fileStatus(filePath);
-		webHdfs.releaseConnection();
-		if (response.getStatusLine().getStatusCode() == 404) {
-			return false;
-		} else {
-			return true;
+	private int getHdfsRecordCount(Properties props, String databaseName, String tableName, Map<String, String> partitionMap,
+						String host, int port, Map<String, String> configuration) throws HCatException, DataValidationException{
+		int count = 0;
+		String filterValue="";
+		StringBuilder sb = new StringBuilder();
+		if(partitionMap!=null){
+			Set<String> partitionNames = partitionMap.keySet();
+			Iterator<String> iter = partitionNames.iterator();
+			while (iter.hasNext()) {
+				String key = iter.next();
+				if(!key.equals(ActionEventHeaderConstants.ENTITY_NAME.toLowerCase())){
+				filterValue = key
+						+ "=\""
+						+ partitionMap.get(key)
+						+ "\"";
+				sb.append(filterValue);
+				}
+			}
 		}
-	}
-
-	/**
-	 * This is to make error record count directory in hdfs
-	 * 
-	 * @param dirPath
-	 * @return true if create directory successfully else return false
-	 * @throws IOException
-	 */
-	private boolean makeErrorRecordCountDir(String dirPath) throws IOException {
-		HttpResponse response = webHdfs.mkdir(dirPath);
-		webHdfs.releaseConnection();
-		if (response.getStatusLine().getStatusCode() == 200) {
-			return true;
-		} else {
-			return false;
+		HiveTableManger hiveTableManager = HiveTableManger.getInstance(props);
+		if(!hiveTableManager.isTableCreated(databaseName, tableName)){
+			logger.warn(AdaptorConfig.getInstance().getAdaptorContext()
+					.getAdaptorName(), "Hive table not exist", 
+					"Hive table {} is not found in {} database", tableName, databaseName);
+			throw new DataValidationException("Hive table is not found!");
+		}else{
+			ReaderContext cntxt = hiveTableManager.readData(
+				databaseName,
+				tableName,
+				sb.toString(),
+				host, port,
+				configuration);
+			
+			for (int slaveNode = 0; slaveNode < cntxt.numSplits(); slaveNode++) {
+				HCatReader reader = DataTransferFactory.getHCatReader(cntxt,
+					slaveNode);
+				Iterator<HCatRecord> records = reader.read();
+				while (records.hasNext()) {
+					count++;
+					records.next();
+				}
+			}
 		}
+		return count;	
 	}
-
-	/**
-	 * This method is move errorRecordCountFile to another location in hdfs
-	 * 
-	 * @param source
-	 *            errorRecordCountFile path
-	 * @param dest
-	 *            error record count directory
-	 * @throws IOException
-	 */
-	private void moveErrorRecordCountFile(String source, String dest) throws IOException {
-		webHdfs.addParameter("destination", dest);
-		webHdfs.rename(source);
-		webHdfs.releaseConnection();
+	
+	private Map<String, String> getHAProperties(ActionEvent actionEvent) {
+		Map<String, String> configMap = new HashMap<String, String>();
+		String haEnabledString = actionEvent.getHeaders().get(HiveClientConstants.HA_ENABLED);
+		Boolean haEnabled = Boolean.valueOf(haEnabledString);
+		if(haEnabled){
+			String hiveProxyProvider = actionEvent.getHeaders().get(HiveClientConstants.DFS_CLIENT_FAILOVER_PROVIDER);
+			String haServiceName = actionEvent.getHeaders().get(HiveClientConstants.HA_SERVICE_NAME);
+			String dfsNameService = actionEvent.getHeaders().get(HiveClientConstants.DFS_NAME_SERVICES);
+			String dfsNameNode1 = actionEvent.getHeaders().get(HiveClientConstants.DFS_NAME_NODE_RPC_ADDRESS_NODE1);
+			String dfsNameNode2 = actionEvent.getHeaders().get(HiveClientConstants.DFS_NAME_NODE_RPC_ADDRESS_NODE2);
+		
+			configMap.put(HiveClientConstants.DFS_CLIENT_FAILOVER_PROVIDER.replace(HiveClientConstants.HA_SERVICE_NAME,
+				haServiceName), hiveProxyProvider);
+			configMap.put(HiveClientConstants.DFS_NAME_SERVICES, dfsNameService);
+			configMap.put(HiveClientConstants.DFS_HA_NAMENODES.replace(HiveClientConstants.HA_SERVICE_NAME, "hdfs-cluster"),
+					HiveClientConstants.DFS_NAME_NODE_LIST);
+			configMap.put(HiveClientConstants.DFS_NAME_NODE_RPC_ADDRESS_NODE1.replace(
+					HiveClientConstants.HA_SERVICE_NAME, haServiceName), dfsNameNode1);
+			configMap.put(HiveClientConstants.DFS_NAME_NODE_RPC_ADDRESS_NODE2.replace(
+					HiveClientConstants.HA_SERVICE_NAME, haServiceName), dfsNameNode2);
+		}
+		return configMap;
 	}
 
 	@Override

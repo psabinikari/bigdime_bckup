@@ -41,5 +41,13 @@ public class AdaptorConfigConstants {
 
 	public static class ValidationHandlerConfigConstants {
 		public static final String VALIDATION_TYPE = "validation-type";
+		public static final String HIVE_HOST = "hiveHost";
+		public static final String HIVE_PORT = "hivePort";
+		public static final String HA_ENABLED = "ha.enable";
+		public static final String DFS_CLIENT_FAILOVER_PROVIDER = "dfs.client.failover.proxy.provider.haservicename";
+		public static final String DFS_NAME_SERVICES = "dfs.nameservices";
+		public static final String DFS_NAME_NODE_RPC_ADDRESS_NODE1 = "dfs.namenode.rpc-address.haservicename.nn1";
+		public static final String DFS_NAME_NODE_RPC_ADDRESS_NODE2 = "dfs.namenode.rpc-address.haservicename.nn2";
+		public static final String HA_SERVICE_NAME = "haservicename";
 	}
 }

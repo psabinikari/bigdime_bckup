@@ -138,8 +138,8 @@ public class JdbcMetadataManagement {
 			if (metasegment != null) {
 				if (metasegment.getEntitees() != null)
 					for (Entitee entity : metasegment.getEntitees()) {
-						if (entity.getEntityName() == null
-								|| entity.getEntityName().length() == 0)
+/*						if (entity.getEntityName() == null
+								|| entity.getEntityName().length() == 0)*/
 							entity.setEntityName(tableName);
 					}
 			}

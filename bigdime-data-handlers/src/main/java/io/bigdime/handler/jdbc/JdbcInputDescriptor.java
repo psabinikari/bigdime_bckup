@@ -23,6 +23,7 @@ public class JdbcInputDescriptor implements InputDescriptor<String>{
 	
 	private String query;
 	private String entityName;
+	private String targetEntityName;
 	private String incrementedBy;
 	private String incrementedColumnType;
 	private String columnName;
@@ -70,6 +71,10 @@ public class JdbcInputDescriptor implements InputDescriptor<String>{
 			rowDelimeter = jsonObject.getString("rowDelimeter");
 		if (rowDelimeter == null || rowDelimeter.length() == 0)
 			rowDelimeter = JdbcConstants.NEW_LINE_DELIMETER;
+		if (!jsonObject.isNull("targetTableName"))
+			targetEntityName = jsonObject.getString("targetTableName");
+		if (targetEntityName == null || targetEntityName.length() == 0)
+			targetEntityName = entityName;
 		
 		if (!jsonObject.isNull("snapshot"))
 			snapshot = jsonObject.getString("snapshot");
@@ -122,6 +127,14 @@ public class JdbcInputDescriptor implements InputDescriptor<String>{
 
 	public void setEntityName(String entityName) {
 		this.entityName = entityName;
+	}
+	
+	public String getTargetEntityName() {
+		return targetEntityName;
+	}
+
+	public void setTargetEntityName(String targetEntityName) {
+		this.targetEntityName = targetEntityName;
 	}
 
 	public String getIncrementedBy() {

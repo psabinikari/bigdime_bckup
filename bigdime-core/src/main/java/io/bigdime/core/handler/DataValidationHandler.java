@@ -22,6 +22,7 @@ import io.bigdime.core.AdaptorConfigurationException;
 import io.bigdime.core.HandlerException;
 import io.bigdime.core.commons.AdaptorLogger;
 import io.bigdime.core.config.AdaptorConfigConstants.ValidationHandlerConfigConstants;
+import io.bigdime.core.constants.ActionEventHeaderConstants;
 import io.bigdime.core.runtimeinfo.RuntimeInfo;
 import io.bigdime.core.runtimeinfo.RuntimeInfoStore;
 import io.bigdime.core.validation.DataValidationException;
@@ -51,7 +52,15 @@ public class DataValidationHandler extends AbstractHandler {
 	@Autowired
 	private ValidatorFactory validatorFactory;
 	private List<Validator> validators = new ArrayList<>();
-
+	private String hiveHostName;
+	private String hivePort;
+	private String haEnabled;
+	private String hiveProxyProvider;
+	private String haServiceName;
+	private String dfsNameService;
+	private String dfsNameNode1;
+	private String dfsNameNode2;
+	
 	@Autowired
 	private RuntimeInfoStore<RuntimeInfo> runtimeInfoStore;
 
@@ -72,6 +81,22 @@ public class DataValidationHandler extends AbstractHandler {
 			logger.debug("building validation handler", "validation_type=\"{}\"", type);
 			validators.add(validatorFactory.getValidator(type.trim()));
 		}
+		hiveHostName = (String) getPropertyMap()
+				.get(ValidationHandlerConfigConstants.HIVE_HOST);
+		hivePort = (String) getPropertyMap()
+				.get(ValidationHandlerConfigConstants.HIVE_PORT);
+		haEnabled = (String) getPropertyMap()
+				.get(ValidationHandlerConfigConstants.HA_ENABLED);
+		hiveProxyProvider = (String) getPropertyMap()
+				.get(ValidationHandlerConfigConstants.DFS_CLIENT_FAILOVER_PROVIDER);
+		haServiceName = (String) getPropertyMap()
+				.get(ValidationHandlerConfigConstants.HA_SERVICE_NAME);
+		dfsNameService = (String) getPropertyMap()
+				.get(ValidationHandlerConfigConstants.DFS_NAME_SERVICES);
+		dfsNameNode1 = (String) getPropertyMap()
+				.get(ValidationHandlerConfigConstants.DFS_NAME_NODE_RPC_ADDRESS_NODE1);
+		dfsNameNode2 = (String) getPropertyMap()
+				.get(ValidationHandlerConfigConstants.DFS_NAME_NODE_RPC_ADDRESS_NODE2);
 	}
 
 	@Override
@@ -82,7 +107,17 @@ public class DataValidationHandler extends AbstractHandler {
 		logger.debug("DataValidationHandler processing event", "actionEvents.size=\"{}\"", actionEvents.size());
 		Preconditions.checkArgument(!actionEvents.isEmpty(), "eventList in HandlerContext can't be empty");
 		ActionEvent actionEvent = actionEvents.get(0);
+		actionEvent.getHeaders().put(ActionEventHeaderConstants.HIVE_HOST_NAME, hiveHostName);
+		actionEvent.getHeaders().put(ActionEventHeaderConstants.HIVE_PORT, hivePort);
+		actionEvent.getHeaders().put(ValidationHandlerConfigConstants.HA_ENABLED, haEnabled);
+		actionEvent.getHeaders().put(ValidationHandlerConfigConstants.DFS_CLIENT_FAILOVER_PROVIDER, hiveProxyProvider);
+		actionEvent.getHeaders().put(ValidationHandlerConfigConstants.HA_SERVICE_NAME, haServiceName);
+		actionEvent.getHeaders().put(ValidationHandlerConfigConstants.DFS_NAME_SERVICES, dfsNameService);
+		actionEvent.getHeaders().put(ValidationHandlerConfigConstants.DFS_NAME_NODE_RPC_ADDRESS_NODE1, dfsNameNode1);
+		actionEvent.getHeaders().put(ValidationHandlerConfigConstants.DFS_NAME_NODE_RPC_ADDRESS_NODE2, dfsNameNode2);
+		
 		process0(actionEvent);
+		
 		return Status.READY;
 	}
 

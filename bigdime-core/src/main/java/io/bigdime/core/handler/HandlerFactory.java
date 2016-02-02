@@ -3,6 +3,7 @@
  */
 package io.bigdime.core.handler;
 
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Map;
@@ -36,7 +37,8 @@ public final class HandlerFactory {
 		String envProperties = System.getProperty("env.properties");
 		logger.info("constructing HandlerFactory", "envProperties=\"{}\"", envProperties);
 		try (InputStream is = this.getClass().getClassLoader().getResourceAsStream(envProperties)) {
-			appProperties = new Properties();
+		//try (InputStream is = new FileInputStream(envProperties)) {	
+		appProperties = new Properties();
 			appProperties.load(is);
 			logger.info("constructing HandlerFactory", "properties=\"{}\"", appProperties.toString());
 		} catch (IOException e) {

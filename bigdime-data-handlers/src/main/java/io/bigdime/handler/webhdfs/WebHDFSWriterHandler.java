@@ -380,7 +380,13 @@ public class WebHDFSWriterHandler extends AbstractHandler {
 			final WebHDFSWriterHandlerJournal journal) throws RuntimeInfoStoreException {
 		if (journal.getRecordCount() < 0) {
 			String entityName = actionEvent.getHeaders().get(ActionEventHeaderConstants.ENTITY_NAME);
+			if(entityName == null)
+				entityName = actionEvent.getHeaders().get(ActionEventHeaderConstants.ENTITY_NAME.toUpperCase());
+				
 			String inputDescriptor = actionEvent.getHeaders().get(ActionEventHeaderConstants.INPUT_DESCRIPTOR);
+			if(inputDescriptor == null){
+				inputDescriptor = actionEvent.getHeaders().get(ActionEventHeaderConstants.DATE);
+			}
 			try {
 				RuntimeInfo runtimeInfo = runtimeInfoStore.get(AdaptorConfig.getInstance().getName(), entityName,
 						inputDescriptor);

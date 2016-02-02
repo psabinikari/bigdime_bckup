@@ -1,8 +1,4 @@
-<!--
-
-    Copyright (C) 2015 Stubhub.
-
--->
+<!-- Copyright (C) 2015 Stubhub. -->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
 	<modelVersion>4.0.0</modelVersion>
@@ -16,6 +12,11 @@
 		<artifactId>bigdime</artifactId>
 		<version>0.0.9-SNAPSHOT</version>
 	</parent>
+	
+	<properties>
+		
+		<powermock.version>1.6.2</powermock.version>
+		</properties>
 
 	<dependencies>
 		<dependency>
@@ -32,6 +33,26 @@
 		<dependency>
 			<groupId>org.mockito</groupId>
 			<artifactId>mockito-all</artifactId>
+			<scope>test</scope>
+		</dependency>
+		
+		<!-- power mockito -->
+		<dependency>
+			<groupId>org.powermock</groupId>
+			<artifactId>powermock-module-testng</artifactId>
+			<version>${powermock.version}</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.powermock</groupId>
+			<artifactId>powermock-api-mockito</artifactId>
+			<version>${powermock.version}</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.powermock</groupId>
+			<artifactId>powermock-module-testng-agent</artifactId>
+			<version>${powermock.version}</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
@@ -102,19 +123,19 @@
 			<groupId>org.springframework</groupId>
 			<artifactId>spring-jdbc</artifactId>
 		</dependency>
-		
+
 		<dependency>
 			<groupId>io.bigdime</groupId>
 			<artifactId>bigdime-runtimeinfo-management</artifactId>
-			<version>0.0.9-SNAPSHOT</version> 
-			
-		
-		</dependency> 
-		
+			<version>0.0.9-SNAPSHOT</version>
+
+
+		</dependency>
+
 		<dependency>
-            <groupId>com.oracle</groupId>
-            <artifactId>ojdbc7</artifactId>
-            <version>12.1.0.1</version>
-        </dependency>
+			<groupId>com.oracle</groupId>
+			<artifactId>ojdbc7</artifactId>
+			<version>12.1.0.1</version>
+		</dependency>
 	</dependencies>
 </project>

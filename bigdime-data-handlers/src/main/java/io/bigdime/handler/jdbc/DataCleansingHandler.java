@@ -35,14 +35,11 @@ import io.bigdime.core.AdaptorConfigurationException;
 import io.bigdime.core.HandlerException;
 import io.bigdime.core.InvalidValueConfigurationException;
 import io.bigdime.core.commons.AdaptorLogger;
-import io.bigdime.core.commons.PropertyHelper;
-import io.bigdime.core.config.AdaptorConfig;
 import io.bigdime.core.config.AdaptorConfigConstants;
 import io.bigdime.core.constants.ActionEventHeaderConstants;
 import io.bigdime.core.handler.AbstractHandler;
 import io.bigdime.core.handler.HandlerJournal;
 import io.bigdime.core.handler.SimpleJournal;
-import io.bigdime.handler.constants.WebHDFSWriterHandlerConstants;
 
 /**
  * 
@@ -250,7 +247,12 @@ public class DataCleansingHandler extends AbstractHandler {
 				// Partition Dates logic..
 				actionEvent.getHeaders().put(
 						ActionEventHeaderConstants.ENTITY_NAME.toUpperCase(),
-						jdbcInputDescriptor.getEntityName());
+						jdbcInputDescriptor.getTargetEntityName());
+				actionEvent.getHeaders().put(ActionEventHeaderConstants.LINES_TERMINATED_BY,
+				jdbcInputDescriptor.getRowDelimeter());
+				
+				actionEvent.getHeaders().put(ActionEventHeaderConstants.FIELDS_TERMINATED_BY,
+						jdbcInputDescriptor.getFieldDelimeter());
 
 				if (jdbcInputDescriptor.getSnapshot() != null
 						&& jdbcInputDescriptor.getSnapshot().equalsIgnoreCase(
@@ -269,23 +271,10 @@ public class DataCleansingHandler extends AbstractHandler {
 				} else {
 					actionEvent.getHeaders()
 							.put(ActionEventHeaderConstants.DATE,
-									new SimpleDateFormat("YYYYMMDD")
+									new SimpleDateFormat("yyyMMdd")
 											.format(new Date()));
 					
 				}
-
-				
-
-				actionEvent.getHeaders().put(
-						ActionEventHeaderConstants.HIVE_HOST_NAME,
-						"sandbox.hortonworks.com");
-				actionEvent.getHeaders().put(
-						ActionEventHeaderConstants.HIVE_PORT, "9083");
-				actionEvent.getHeaders().put(
-						ActionEventHeaderConstants.HIVE_DB_NAME, "test");
-				actionEvent.getHeaders().put(
-						ActionEventHeaderConstants.HIVE_TABLE_NAME,
-						jdbcInputDescriptor.getEntityName());
                 
 				/*
 				 * Check for outputChannel map. get the eventList of channels.

@@ -97,7 +97,7 @@ public class ValidatorFactoryTest extends AbstractTestNGSpringContextTests {
 	 * @throws InstantiationException
 	 * @throws AdaptorConfigurationException
 	 */
-	@Test
+	/*@Test
 	public void testGetValidatorWithInstantiationException() throws AdaptorConfigurationException {
 		try {
 
@@ -119,5 +119,5 @@ public class ValidatorFactoryTest extends AbstractTestNGSpringContextTests {
 			e.printStackTrace();
 			Assert.assertTrue(e.getCause() instanceof InstantiationException);
 		}
-	}
+	}*/
 }
