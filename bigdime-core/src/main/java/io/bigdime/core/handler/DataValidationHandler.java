@@ -107,14 +107,16 @@ public class DataValidationHandler extends AbstractHandler {
 		logger.debug("DataValidationHandler processing event", "actionEvents.size=\"{}\"", actionEvents.size());
 		Preconditions.checkArgument(!actionEvents.isEmpty(), "eventList in HandlerContext can't be empty");
 		ActionEvent actionEvent = actionEvents.get(0);
-		actionEvent.getHeaders().put(ActionEventHeaderConstants.HIVE_HOST_NAME, hiveHostName);
-		actionEvent.getHeaders().put(ActionEventHeaderConstants.HIVE_PORT, hivePort);
-		actionEvent.getHeaders().put(ValidationHandlerConfigConstants.HA_ENABLED, haEnabled);
-		actionEvent.getHeaders().put(ValidationHandlerConfigConstants.DFS_CLIENT_FAILOVER_PROVIDER, hiveProxyProvider);
-		actionEvent.getHeaders().put(ValidationHandlerConfigConstants.HA_SERVICE_NAME, haServiceName);
-		actionEvent.getHeaders().put(ValidationHandlerConfigConstants.DFS_NAME_SERVICES, dfsNameService);
-		actionEvent.getHeaders().put(ValidationHandlerConfigConstants.DFS_NAME_NODE_RPC_ADDRESS_NODE1, dfsNameNode1);
-		actionEvent.getHeaders().put(ValidationHandlerConfigConstants.DFS_NAME_NODE_RPC_ADDRESS_NODE2, dfsNameNode2);
+		if(actionEvent != null){
+			actionEvent.getHeaders().put(ActionEventHeaderConstants.HIVE_HOST_NAME, hiveHostName);
+			actionEvent.getHeaders().put(ActionEventHeaderConstants.HIVE_PORT, hivePort);
+			actionEvent.getHeaders().put(ValidationHandlerConfigConstants.HA_ENABLED, haEnabled);
+			actionEvent.getHeaders().put(ValidationHandlerConfigConstants.DFS_CLIENT_FAILOVER_PROVIDER, hiveProxyProvider);
+			actionEvent.getHeaders().put(ValidationHandlerConfigConstants.HA_SERVICE_NAME, haServiceName);
+			actionEvent.getHeaders().put(ValidationHandlerConfigConstants.DFS_NAME_SERVICES, dfsNameService);
+			actionEvent.getHeaders().put(ValidationHandlerConfigConstants.DFS_NAME_NODE_RPC_ADDRESS_NODE1, dfsNameNode1);
+			actionEvent.getHeaders().put(ValidationHandlerConfigConstants.DFS_NAME_NODE_RPC_ADDRESS_NODE2, dfsNameNode2);
+		}
 		
 		process0(actionEvent);
 		
