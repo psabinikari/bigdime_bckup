@@ -125,13 +125,14 @@ public class RecordCountValidator implements Validator {
 
 		if (sourceRecordCount == hdfsRecordCount) {
 			logger.info(AdaptorConfig.getInstance().getAdaptorContext().getAdaptorName(), "Record count matches",
-					"Hdfs record count({}) is same as source record count({}), partitionMap {}", hdfsRecordCount, sourceRecordCount, partitionColumnsMap);
+					"Hdfs record count({}) is same as source record count({}), hiveDBName: {}, hiveTableName: {}, partitionMap: {}", hdfsRecordCount, 
+					sourceRecordCount, hiveDBName, hiveTableName, partitionColumnsMap);
 			validationPassed.setValidationResult(ValidationResult.PASSED);
 		} else {
 			logger.warn(AdaptorConfig.getInstance().getAdaptorContext().getAdaptorName(),
 					"Record count mismatches",
-					"Hdfs record count({}) is not same as source record count({}), partitionMap {}", hdfsRecordCount,
-					sourceRecordCount, partitionColumnsMap);
+					"Hdfs record count({}) is not same as source record count({}), hiveDBName: {}, hiveTableName: {}, partitionMap: {}", hdfsRecordCount,
+					sourceRecordCount, hiveDBName, hiveTableName, partitionColumnsMap);
 			validationPassed.setValidationResult(ValidationResult.FAILED);
 		}
 
@@ -208,7 +209,7 @@ public class RecordCountValidator implements Validator {
 			configMap.put(HiveClientConstants.DFS_CLIENT_FAILOVER_PROVIDER.replace(HiveClientConstants.HA_SERVICE_NAME,
 				haServiceName), hiveProxyProvider);
 			configMap.put(HiveClientConstants.DFS_NAME_SERVICES, dfsNameService);
-			configMap.put(HiveClientConstants.DFS_HA_NAMENODES.replace(HiveClientConstants.HA_SERVICE_NAME, "hdfs-cluster"),
+			configMap.put(HiveClientConstants.DFS_HA_NAMENODES.replace(HiveClientConstants.HA_SERVICE_NAME, haServiceName),
 					HiveClientConstants.DFS_NAME_NODE_LIST);
 			configMap.put(HiveClientConstants.DFS_NAME_NODE_RPC_ADDRESS_NODE1.replace(
 					HiveClientConstants.HA_SERVICE_NAME, haServiceName), dfsNameNode1);

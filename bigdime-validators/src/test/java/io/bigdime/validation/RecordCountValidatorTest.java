@@ -7,7 +7,9 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
+import java.util.Iterator;
 import java.util.Map;
+import java.util.Properties;
 
 import io.bigdime.core.ActionEvent;
 import io.bigdime.core.validation.DataValidationException;
@@ -15,23 +17,34 @@ import io.bigdime.core.validation.ValidationResponse.ValidationResult;
 import io.bigdime.validation.DataValidationConstants;
 import io.bigdime.validation.RecordCountValidator;
 import io.bigdime.libs.hdfs.WebHdfs;
+import io.bigdime.libs.hive.table.HiveTableManger;
 
+import org.apache.hive.hcatalog.common.HCatException;
+import org.apache.hive.hcatalog.data.DefaultHCatRecord;
+import org.apache.hive.hcatalog.data.HCatRecord;
+import org.apache.hive.hcatalog.data.transfer.DataTransferFactory;
+import org.apache.hive.hcatalog.data.transfer.HCatReader;
+import org.apache.hive.hcatalog.data.transfer.ReaderContext;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.StatusLine;
 import org.apache.http.client.ClientProtocolException;
 import org.testng.Assert;
 import org.mockito.Mockito;
+import org.powermock.api.mockito.PowerMockito;
+import org.powermock.core.classloader.annotations.PrepareForTest;
+import org.powermock.modules.testng.PowerMockTestCase;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.testng.annotations.Test;
 
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.*;
 
-public class RecordCountValidatorTest {
+@PrepareForTest(HiveTableManger.class)
+public class RecordCountValidatorTest extends PowerMockTestCase {
 
 	@Test(expectedExceptions = IllegalArgumentException.class)
-	public void validateNullHostTest() throws DataValidationException {
+	public void validateNullHiveHostTest() throws DataValidationException {
 		RecordCountValidator recordCountValidator = new RecordCountValidator();
 		ActionEvent mockActionEvent = Mockito.mock(ActionEvent.class);
 		@SuppressWarnings("unchecked")
@@ -42,24 +55,13 @@ public class RecordCountValidatorTest {
 	}
 
 	@Test(expectedExceptions = IllegalArgumentException.class)
-	public void validateNullPortNumberTest() throws DataValidationException {
+	public void validateNullHivePortTest() throws DataValidationException {
 		RecordCountValidator recordCountValidator = new RecordCountValidator();
 		ActionEvent mockActionEvent = Mockito.mock(ActionEvent.class);
 		@SuppressWarnings("unchecked")
 		Map<String, String> mockMap = Mockito.mock(Map.class);
 		when(mockActionEvent.getHeaders()).thenReturn(mockMap);
 		when(mockMap.get(anyString())).thenReturn("host").thenReturn(null);
-		recordCountValidator.validate(mockActionEvent);
-	}
-	
-	@Test(expectedExceptions = IllegalArgumentException.class)
-	public void validateNullUserNameTest() throws DataValidationException {
-		RecordCountValidator recordCountValidator = new RecordCountValidator();
-		ActionEvent mockActionEvent = Mockito.mock(ActionEvent.class);
-		@SuppressWarnings("unchecked")
-		Map<String, String> mockMap = Mockito.mock(Map.class);
-		when(mockActionEvent.getHeaders()).thenReturn(mockMap);
-		when(mockMap.get(anyString())).thenReturn("host").thenReturn("111").thenReturn(null);
 		recordCountValidator.validate(mockActionEvent);
 	}
 	
@@ -70,7 +72,7 @@ public class RecordCountValidatorTest {
 		@SuppressWarnings("unchecked")
 		Map<String, String> mockMap = Mockito.mock(Map.class);
 		when(mockActionEvent.getHeaders()).thenReturn(mockMap);
-		when(mockMap.get(anyString())).thenReturn("host").thenReturn("Hello").thenReturn("user");
+		when(mockMap.get(anyString())).thenReturn("host").thenReturn("port");
 		recordCountValidator.validate(mockActionEvent);
 	}
 
@@ -81,7 +83,7 @@ public class RecordCountValidatorTest {
 		@SuppressWarnings("unchecked")
 		Map<String, String> mockMap = Mockito.mock(Map.class);
 		when(mockActionEvent.getHeaders()).thenReturn(mockMap);
-		when(mockMap.get(anyString())).thenReturn("host").thenReturn("123").thenReturn("user").thenReturn("");
+		when(mockMap.get(anyString())).thenReturn("host").thenReturn("123").thenReturn("");
 		recordCountValidator.validate(mockActionEvent);
 	}
 
@@ -92,124 +94,113 @@ public class RecordCountValidatorTest {
 		@SuppressWarnings("unchecked")
 		Map<String, String> mockMap = Mockito.mock(Map.class);
 		when(mockActionEvent.getHeaders()).thenReturn(mockMap);
-		when(mockMap.get(anyString())).thenReturn("host").thenReturn("123").thenReturn("user").thenReturn("src");
+		when(mockMap.get(anyString())).thenReturn("host").thenReturn("123").thenReturn("src");
 		recordCountValidator.validate(mockActionEvent);
 	}
 
 	@Test(expectedExceptions = IllegalArgumentException.class)
-	public void validateNullHdfsPathTest() throws DataValidationException {
+	public void validateNullHiveDBNameTest() throws DataValidationException {
 		RecordCountValidator recordCountValidator = new RecordCountValidator();
 		ActionEvent mockActionEvent = Mockito.mock(ActionEvent.class);
 		@SuppressWarnings("unchecked")
 		Map<String, String> mockMap = Mockito.mock(Map.class);
 		when(mockActionEvent.getHeaders()).thenReturn(mockMap);
-		when(mockMap.get(anyString())).thenReturn("host").thenReturn("123").thenReturn("user").thenReturn("2342").thenReturn("");
+		when(mockMap.get(anyString())).thenReturn("host").thenReturn("123").thenReturn("2342").thenReturn("");
 		recordCountValidator.validate(mockActionEvent);
 	}
 
 	@Test(expectedExceptions = IllegalArgumentException.class)
-	public void validateNullHdfsFileNameTest() throws DataValidationException {
+	public void validateNullHiveTableNameTest() throws DataValidationException {
 		RecordCountValidator recordCountValidator = new RecordCountValidator();
 		ActionEvent mockActionEvent = Mockito.mock(ActionEvent.class);
 		@SuppressWarnings("unchecked")
 		Map<String, String> mockMap = Mockito.mock(Map.class);
 		when(mockActionEvent.getHeaders()).thenReturn(mockMap);
-		when(mockMap.get(anyString())).thenReturn("host").thenReturn("123").thenReturn("user").thenReturn("453").thenReturn("path")
+		when(mockMap.get(anyString())).thenReturn("host").thenReturn("123").thenReturn("453").thenReturn("db")
 				.thenReturn(null);
 		recordCountValidator.validate(mockActionEvent);
 	}
+	
+	@Test(expectedExceptions = DataValidationException.class)
+	public void validateHiveTableNotCreated() throws DataValidationException, HCatException {
+		RecordCountValidator recordCountValidator = new RecordCountValidator();
+		ActionEvent mockActionEvent = Mockito.mock(ActionEvent.class);
+		@SuppressWarnings("unchecked")
+		Map<String, String> mockMap = Mockito.mock(Map.class);
+		when(mockActionEvent.getHeaders()).thenReturn(mockMap);
+		when(mockMap.get(anyString())).thenReturn("host").thenReturn("123").thenReturn("453").thenReturn("db")
+				.thenReturn("table");
+		HiveTableManger mockHiveTableManager = Mockito.mock(HiveTableManger.class);
+		PowerMockito.mockStatic(HiveTableManger.class);
+		PowerMockito.when(HiveTableManger.getInstance((Properties) Mockito.any())).thenReturn(mockHiveTableManager);	
+		Mockito.when(mockHiveTableManager.isTableCreated(anyString(), anyString())).thenReturn(false);
+		recordCountValidator.validate(mockActionEvent);
+	}
 
+	@SuppressWarnings("unchecked")
 	@Test
 	public void recordCountWithoutPartitionDiffTest()
 			throws DataValidationException, ClientProtocolException, IOException {
 		RecordCountValidator recordCountValidator = new RecordCountValidator();
 		ActionEvent mockActionEvent = Mockito.mock(ActionEvent.class);
-		@SuppressWarnings("unchecked")
 		Map<String, String> mockMap = Mockito.mock(Map.class);
 		when(mockActionEvent.getHeaders()).thenReturn(mockMap);
-		when(mockMap.get(anyString())).thenReturn("host").thenReturn("123").thenReturn("user").thenReturn("2342")
-				.thenReturn("/webhdfs/v1/path/").thenReturn("fileName").thenReturn("");
-		WebHdfs mockWebHdfs = Mockito.mock(WebHdfs.class);
-		ReflectionTestUtils.setField(recordCountValidator, "webHdfs", mockWebHdfs);
-		HttpResponse mockResponse = Mockito.mock(HttpResponse.class);
-		Mockito.when(mockWebHdfs.openFile(any(String.class))).thenReturn(mockResponse);
-		HttpEntity mockHttpEntity = Mockito.mock(HttpEntity.class);
-		Mockito.when(mockResponse.getEntity()).thenReturn(mockHttpEntity);
-		InputStream inputStream = new ByteArrayInputStream(
-				"testString \n new line in file".getBytes(Charset.forName("UTF-8")));
-		Mockito.when(mockHttpEntity.getContent()).thenReturn(inputStream);
-		doNothing().when(mockWebHdfs).releaseConnection();
-
-		HttpResponse mockResponse1 = Mockito.mock(HttpResponse.class);
-		when(mockWebHdfs.fileStatus(anyString())).thenReturn(mockResponse1);
-		StatusLine mockSL1 = Mockito.mock(StatusLine.class);
-		when(mockResponse1.getStatusLine()).thenReturn(mockSL1);
-		when(mockSL1.getStatusCode()).thenReturn(404);
-		doNothing().when(mockWebHdfs).releaseConnection();
-
-		HttpResponse mockResponse2 = Mockito.mock(HttpResponse.class);
-		when(mockWebHdfs.mkdir(anyString())).thenReturn(mockResponse2);
-		StatusLine mockSL2 = Mockito.mock(StatusLine.class);
-		when(mockResponse2.getStatusLine()).thenReturn(mockSL2);
-		when(mockSL2.getStatusCode()).thenReturn(200);
-		doNothing().when(mockWebHdfs).releaseConnection();
+		when(mockMap.get(anyString())).thenReturn("host").thenReturn("123").thenReturn("2342")
+				.thenReturn("db").thenReturn("table").thenReturn(null).thenReturn("").thenReturn("false");
+		HiveTableManger mockHiveTableManager = Mockito.mock(HiveTableManger.class);
+		PowerMockito.mockStatic(HiveTableManger.class);
+		PowerMockito.when(HiveTableManger.getInstance((Properties) Mockito.any())).thenReturn(mockHiveTableManager);	
+		Mockito.when(mockHiveTableManager.isTableCreated(anyString(), anyString())).thenReturn(true);
+		ReaderContext mockContext = Mockito.mock(ReaderContext.class);
+		Mockito.when(mockHiveTableManager.readData(anyString(), anyString(), anyString(), anyString(), anyInt(), anyMap()))
+				.thenReturn(mockContext);
 		Assert.assertEquals(recordCountValidator.validate(mockActionEvent).getValidationResult(),
 				ValidationResult.FAILED);
 	}
 
+	@SuppressWarnings("unchecked")
 	@Test
 	public void recordCountWithPartitionMatchTest()
 			throws DataValidationException, ClientProtocolException, IOException {
 		RecordCountValidator recordCountValidator = new RecordCountValidator();
 		ActionEvent mockActionEvent = Mockito.mock(ActionEvent.class);
-		@SuppressWarnings("unchecked")
 		Map<String, String> mockMap = Mockito.mock(Map.class);
-		String hivePartitions = "dt, hr";
+		String hivePartitionsNames = "dt, hr";
+		String hivePartitionValues = "20120202, 01";
 
 		when(mockActionEvent.getHeaders()).thenReturn(mockMap);
-		when(mockMap.get(anyString())).thenReturn("host").thenReturn("123").thenReturn("user").thenReturn("2").thenReturn("path")
-				.thenReturn("fileName").thenReturn(hivePartitions);
-
-		WebHdfs mockWebHdfs = Mockito.mock(WebHdfs.class);
-		ReflectionTestUtils.setField(recordCountValidator, "webHdfs", mockWebHdfs);
-		HttpResponse mockResponse = Mockito.mock(HttpResponse.class);
-		Mockito.when(mockWebHdfs.openFile(any(String.class))).thenReturn(mockResponse);
-		HttpEntity mockHttpEntity = Mockito.mock(HttpEntity.class);
-		Mockito.when(mockResponse.getEntity()).thenReturn(mockHttpEntity);
-		InputStream inputStream = new ByteArrayInputStream(
-				"testString \n new line in file".getBytes(Charset.forName("UTF-8")));
-		Mockito.when(mockHttpEntity.getContent()).thenReturn(inputStream);
+		when(mockMap.get(anyString())).thenReturn("host").thenReturn("123").thenReturn("0").thenReturn("db")
+				.thenReturn("table").thenReturn(hivePartitionsNames).thenReturn(hivePartitionValues).thenReturn("false");;
+		HiveTableManger mockHiveTableManager = Mockito.mock(HiveTableManger.class);
+		PowerMockito.mockStatic(HiveTableManger.class);
+		PowerMockito.when(HiveTableManger.getInstance((Properties) Mockito.any())).thenReturn(mockHiveTableManager);	
+		Mockito.when(mockHiveTableManager.isTableCreated(anyString(), anyString())).thenReturn(true);
+		ReaderContext mockContext = Mockito.mock(ReaderContext.class);
+		Mockito.when(mockHiveTableManager.readData(anyString(), anyString(), anyString(), anyString(), anyInt(), anyMap()))
+				.thenReturn(mockContext);
 		Assert.assertEquals(recordCountValidator.validate(mockActionEvent).getValidationResult(),
 				ValidationResult.PASSED);
 	}
 
+	@SuppressWarnings("unchecked")
 	@Test
-	public void recordCountWithRCErrorDirExistsDiffTest()
+	public void recordCountWithHAEnabledDiffTest()
 			throws DataValidationException, ClientProtocolException, IOException {
 		RecordCountValidator recordCountValidator = new RecordCountValidator();
 		ActionEvent mockActionEvent = Mockito.mock(ActionEvent.class);
-		@SuppressWarnings("unchecked")
 		Map<String, String> mockMap = Mockito.mock(Map.class);
 		when(mockActionEvent.getHeaders()).thenReturn(mockMap);
-		when(mockMap.get(anyString())).thenReturn("host").thenReturn("123").thenReturn("user").thenReturn("2342")
-				.thenReturn("/webhdfs/v1/path/").thenReturn("fileName").thenReturn("");
-		WebHdfs mockWebHdfs = Mockito.mock(WebHdfs.class);
-		ReflectionTestUtils.setField(recordCountValidator, "webHdfs", mockWebHdfs);
-		HttpResponse mockResponse = Mockito.mock(HttpResponse.class);
-		Mockito.when(mockWebHdfs.openFile(any(String.class))).thenReturn(mockResponse);
-		HttpEntity mockHttpEntity = Mockito.mock(HttpEntity.class);
-		Mockito.when(mockResponse.getEntity()).thenReturn(mockHttpEntity);
-		InputStream inputStream = new ByteArrayInputStream(
-				"testString \n new line in file".getBytes(Charset.forName("UTF-8")));
-		Mockito.when(mockHttpEntity.getContent()).thenReturn(inputStream);
-		doNothing().when(mockWebHdfs).releaseConnection();
-
-		HttpResponse mockResponse1 = Mockito.mock(HttpResponse.class);
-		when(mockWebHdfs.fileStatus(anyString())).thenReturn(mockResponse1);
-		StatusLine mockSL1 = Mockito.mock(StatusLine.class);
-		when(mockResponse1.getStatusLine()).thenReturn(mockSL1);
-		when(mockSL1.getStatusCode()).thenReturn(200);
-		doNothing().when(mockWebHdfs).releaseConnection();
+		when(mockMap.get(anyString())).thenReturn("host").thenReturn("123").thenReturn("2342")
+				.thenReturn("db").thenReturn("table").thenReturn("").thenReturn(null)
+				.thenReturn("true").thenReturn("dfs proxy").thenReturn("haServiceName")
+				.thenReturn("dfs service").thenReturn("dfs namenode 1").thenReturn("dfs namenode 2");
+		HiveTableManger mockHiveTableManager = Mockito.mock(HiveTableManger.class);
+		PowerMockito.mockStatic(HiveTableManger.class);
+		PowerMockito.when(HiveTableManger.getInstance((Properties) Mockito.any())).thenReturn(mockHiveTableManager);	
+		Mockito.when(mockHiveTableManager.isTableCreated(anyString(), anyString())).thenReturn(true);
+		ReaderContext mockContext = Mockito.mock(ReaderContext.class);
+		Mockito.when(mockHiveTableManager.readData(anyString(), anyString(), anyString(), anyString(), anyInt(), anyMap()))
+				.thenReturn(mockContext);
 		Assert.assertEquals(recordCountValidator.validate(mockActionEvent).getValidationResult(),
 				ValidationResult.FAILED);
 	}
