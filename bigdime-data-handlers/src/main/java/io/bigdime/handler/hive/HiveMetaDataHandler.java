@@ -58,8 +58,8 @@ public class HiveMetaDataHandler extends AbstractHandler {
 	private String handlerPhase = "building HiveMetaDataHandler";
 	private String webhdfs_scheme = "/webhdfs/v1";
 	private Properties props = new Properties();
-	private HiveDBManger hiveDBManager = null;
-	private HiveTableManger hiveTableManager = null;
+	//private HiveDBManger hiveDBManager = null;
+	//private HiveTableManger hiveTableManager = null;
 	private HivePartitionManger hivePartitionManager = null;
 	private static String hdfsScheme = null;
 	
@@ -82,8 +82,8 @@ public class HiveMetaDataHandler extends AbstractHandler {
 			Preconditions.checkArgument(!actionEvents.isEmpty(), "eventList in HandlerContext can't be empty");
 			ActionEvent actionEvent = actionEvents.get(0);
 			String entityName = actionEvent.getHeaders().get(ActionEventHeaderConstants.ENTITY_NAME);
-			if (entityName == null)
-				entityName = actionEvent.getHeaders().get(ActionEventHeaderConstants.ENTITY_NAME.toUpperCase());
+			/*if (entityName == null)
+				entityName = actionEvent.getHeaders().get(ActionEventHeaderConstants.ENTITY_NAME.toUpperCase());*/
 			Preconditions.checkNotNull(entityName,"EntityName cannot be null");
 
 			Metasegment metasegment = metadataStore.getAdaptorMetasegment(AdaptorConfig.getInstance().getName(), "HIVE", entityName);
@@ -104,7 +104,7 @@ public class HiveMetaDataHandler extends AbstractHandler {
 				HashMap<String,String> partitionMap = getPartitionsMap(partitionKeys, partitionValues);
 				Preconditions.checkNotNull(partitionValues,"Partition Values cannot be null");
 				if(partitionLocation == null)
-					partitionLocation  = getCompletePartitionPath(hdfsBasePath,partitionValues);
+					partitionLocation  = getCompletePartitionPath(hdfsBasePath + getHiveNonPartitionValues(actionEvent),partitionValues);
 				Preconditions.checkNotNull(partitionLocation,"Partition Location cannot be null");
 				createPartition(metasegment.getDatabaseName(), entitee.getEntityName(),partitionMap,partitionLocation);
 			}
@@ -129,7 +129,7 @@ public class HiveMetaDataHandler extends AbstractHandler {
 	 * 
 	 */
 	private synchronized void createDatabase(Metasegment metasegment) throws HCatException {
-		hiveDBManager = HiveDBManger.getInstance(props);
+		HiveDBManger hiveDBManager = HiveDBManger.getInstance(props);
 		DatabaseSpecification.Builder databaseSpecificationBuilder = new DatabaseSpecification.Builder(metasegment.getDatabaseName());
 		DatabaseSpecification  databaseSpecification = databaseSpecificationBuilder.location(metasegment.getDatabaseLocation()).scheme(hdfsScheme).build();
 		try {
@@ -153,16 +153,17 @@ public class HiveMetaDataHandler extends AbstractHandler {
 		if(isTableCreated(dbName,entitee.getEntityName())){
 			return;
 		}
-		hiveTableManager = HiveTableManger.getInstance(props);
+		HiveTableManger hiveTableManager = HiveTableManger.getInstance(props);
 		List<Column> columns = new ArrayList<Column>();
 		
 		Column column = null;
 		//String hiveTableLocation = actionEvent.getHeaders().get(ActionEventHeaderConstants.HIVE_TABLE_LOCATION);
-		String hiveTableLocation = actionEvent.getHeaders().get(ActionEventHeaderConstants.HDFS_PATH);
+		String hdfsPath = actionEvent.getHeaders().get(ActionEventHeaderConstants.HDFS_PATH);
+		String hiveNonPartitionValues = getHiveNonPartitionValues(actionEvent);
+		String hiveTableLocation = StringUtils.remove(hdfsPath, webhdfs_scheme) + hiveNonPartitionValues;
 		String fieldsTerminatedBy = actionEvent.getHeaders().get(ActionEventHeaderConstants.FIELDS_TERMINATED_BY);
 		String linesTerminatedBy = actionEvent.getHeaders().get(ActionEventHeaderConstants.LINES_TERMINATED_BY);
 		String partitionKeys = actionEvent.getHeaders().get(ActionEventHeaderConstants.HIVE_PARTITION_NAMES);
-
 		char fieldsTerminated = default_char;
 		char linesTerminated = default_char;
 
@@ -199,6 +200,25 @@ public class HiveMetaDataHandler extends AbstractHandler {
 		}
 	}
 	
+	private String getHiveNonPartitionValues(ActionEvent actionEvent){
+		String hiveNonPartitionNames = actionEvent.getHeaders().get(ActionEventHeaderConstants.HIVE_NON_PARTITION_NAMES);
+		StringBuffer hiveNonPartitionValuessb = new StringBuffer();
+		if(hiveNonPartitionNames != null){
+			String[] hiveNonPartitionStNames = hiveNonPartitionNames.split(",");
+	        for(String hiveNonPartitionName: hiveNonPartitionStNames){	
+	        	hiveNonPartitionValuessb.append(actionEvent.getHeaders().get(hiveNonPartitionName));
+	        	hiveNonPartitionValuessb.append("/");
+	        }
+	        
+	        	}
+		
+		if(hiveNonPartitionValuessb.length() > 1)
+		return hiveNonPartitionValuessb.toString();
+		
+		return null;
+	        	
+	}
+	
 	/**
 	 * 
 	 * @param databaseName
@@ -207,7 +227,7 @@ public class HiveMetaDataHandler extends AbstractHandler {
 	 */
 	private boolean isTableCreated(String databaseName,String tableName) {
 		boolean isCreated = false;
-		hiveTableManager = HiveTableManger.getInstance(props);
+		HiveTableManger hiveTableManager = HiveTableManger.getInstance(props);
 
 		try {
 			hiveTableManager.getTableMetaData(databaseName, tableName);
