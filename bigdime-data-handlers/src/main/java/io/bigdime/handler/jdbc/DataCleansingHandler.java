@@ -16,6 +16,8 @@ import java.util.regex.Pattern;
 import javax.sql.DataSource;
 
 import org.apache.commons.lang.SerializationUtils;
+import org.joda.time.DateTime;
+import org.joda.time.format.DateTimeFormat;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Scope;
@@ -33,6 +35,7 @@ import io.bigdime.core.ActionEvent;
 import io.bigdime.core.ActionEvent.Status;
 import io.bigdime.core.AdaptorConfigurationException;
 import io.bigdime.core.HandlerException;
+import io.bigdime.core.InvalidDataException;
 import io.bigdime.core.InvalidValueConfigurationException;
 import io.bigdime.core.commons.AdaptorLogger;
 import io.bigdime.core.config.AdaptorConfigConstants;
@@ -69,9 +72,8 @@ public class DataCleansingHandler extends AbstractHandler {
 	@Override
 	public void build() throws AdaptorConfigurationException {
 		handlerPhase = "build DataCleansingHandler";
-		logger.info(handlerPhase,
-				"handler_id={} handler_name={} properties={}", getId(),
-				getName(), getPropertyMap());
+		logger.info(handlerPhase,"handler_id={} handler_name={} properties={}", getId(),
+							getName(), getPropertyMap());
 		super.build();
 
 		@SuppressWarnings("unchecked")
@@ -147,10 +149,8 @@ public class DataCleansingHandler extends AbstractHandler {
 			 * @formatter:on
 			 */
 			List<ActionEvent> actionEvents = getHandlerContext().getEventList();
-			logger.debug(
-					"process DataCleansingHandler",
-					"_message=\"journal empty, will process from context\" actionEvents={}",
-					actionEvents);
+			logger.debug("process DataCleansingHandler",
+					"_message=\"journal empty, will process from context\" actionEvents={}",actionEvents);
 
 			Preconditions.checkNotNull(actionEvents);
 			Preconditions
@@ -174,11 +174,11 @@ public class DataCleansingHandler extends AbstractHandler {
 		long startTime = System.currentTimeMillis();
 		while (!actionEvents.isEmpty()) {
 			ActionEvent actionEvent = actionEvents.remove(0);
-			// System.out.println("byte count in cleansing"+actionEvent.getBody().length);
 
 			byte[] data = actionEvent.getBody();
 
-			StringBuffer stringBuffer = new StringBuffer();
+			StringBuffer sbRowContent = new StringBuffer();
+			StringBuffer sbHiveNonPartitionColumns = new StringBuffer();
 			String datePartition = null;
 			// @SuppressWarnings("unchecked")
 			Map<String, Object> row = (Map<String, Object>) SerializationUtils
@@ -188,98 +188,98 @@ public class DataCleansingHandler extends AbstractHandler {
 				for (int columnNamesListCount = 0; columnNamesListCount < jdbcInputDescriptor
 						.getColumnList().size(); columnNamesListCount++) {
 					// Ensure each field doesn't have rowlineDelimeter
-					Pattern p = Pattern.compile(jdbcInputDescriptor
-							.getRowDelimeter());
-					StringBuffer sbf = new StringBuffer();
-					Matcher m = p.matcher(sbf.append(row
-							.get(jdbcInputDescriptor.getColumnList().get(
-									columnNamesListCount))));
-					StringBuffer sb = new StringBuffer();
+					Pattern p = Pattern.compile(jdbcInputDescriptor.getRowDelimeter());
+					StringBuffer sbfMatcher = new StringBuffer();
+					Matcher m = p.matcher(sbfMatcher.append(row.get(jdbcInputDescriptor.getColumnList().
+										get(columnNamesListCount))));
+					StringBuffer sbRemoveRowDelimeter = new StringBuffer();
 					while (m.find()) {
-						m.appendReplacement(sb, " ");
+						m.appendReplacement(sbRemoveRowDelimeter, " ");
 					}
-					m.appendTail(sb);
-					stringBuffer.append(sb);
-					if (columnNamesListCount != jdbcInputDescriptor
-							.getColumnList().size() - 1)
-						stringBuffer.append(jdbcInputDescriptor
-								.getFieldDelimeter());
+					m.appendTail(sbRemoveRowDelimeter);
+					sbRowContent.append(sbRemoveRowDelimeter);
+					if (columnNamesListCount != jdbcInputDescriptor.getColumnList().size() - 1)
+						sbRowContent.append(jdbcInputDescriptor.getFieldDelimeter());
 
-					if (jdbcInputDescriptor.getIncrementedColumnType().indexOf(
-							"DATE") >= JdbcConstants.INTEGER_CONSTANT_ZERO
-							|| jdbcInputDescriptor.getIncrementedColumnType()
-									.indexOf("TIMESTAMP") >= JdbcConstants.INTEGER_CONSTANT_ZERO) {
+					if (jdbcInputDescriptor.getIncrementedColumnType().indexOf("DATE") >= JdbcConstants.INTEGER_CONSTANT_ZERO
+							    || jdbcInputDescriptor.getIncrementedColumnType().indexOf("TIMESTAMP") >= JdbcConstants.INTEGER_CONSTANT_ZERO) {
 
-						if (jdbcInputDescriptor
-								.getColumnList()
-								.get(columnNamesListCount)
-								.equalsIgnoreCase(
-										jdbcInputDescriptor.getIncrementedBy())) {
+						if (jdbcInputDescriptor.getColumnList().get(columnNamesListCount)
+								.equalsIgnoreCase(jdbcInputDescriptor.getIncrementedBy())) {
+							
 							try {
-								datePartition = (new Timestamp(
-										(new SimpleDateFormat(DATE_FORMAT))
-												.parse(row
-														.get(jdbcInputDescriptor
-																.getColumnList()
-																.get(columnNamesListCount))
-														.toString()).getTime())
-										.toString()).substring(0, 10)
-										.replaceAll("-", "");
+								Date datetime = historicDateFormatHolder.get().parse(row
+										.get(jdbcInputDescriptor.getColumnList().get(columnNamesListCount))
+										.toString());
+								//datePartition = (new Timestamp(datetime.getTime()).toString()).substring(0,10).replaceAll("-", "");
+								datePartition = Timestamp.valueOf(row
+										.get(jdbcInputDescriptor.getColumnList().get(columnNamesListCount))
+										.toString()).toString().substring(0,10).replaceAll("-","");
 							} catch (ParseException e) {
 
-								logger.alert(
-										ALERT_TYPE.INGESTION_FAILED,
-										ALERT_CAUSE.APPLICATION_INTERNAL_ERROR,
-										ALERT_SEVERITY.BLOCKER,
-										"\"Incremental column: Date parser exception\" inputDescription={} error={}",
-										"", e.toString());
-								e.printStackTrace();
+								logger.alert(ALERT_TYPE.INGESTION_FAILED,ALERT_CAUSE.APPLICATION_INTERNAL_ERROR,
+										ALERT_SEVERITY.BLOCKER,"\"Incremental column: Date parser exception\" inputDescription={} error={}",
+										row
+										.get(jdbcInputDescriptor.getColumnList().get(columnNamesListCount))
+										.toString(), e.toString());
+								throw new InvalidDataException(" incremental column Date Parser exception :"+row
+										.get(jdbcInputDescriptor.getColumnList().get(columnNamesListCount))
+										.toString());
 							}
 						}
 					}
 				}
 
-				// apply cleansing here...
-				// data.toString().replace("\n", " ");
-				stringBuffer.append(jdbcInputDescriptor.getRowDelimeter());
-				actionEvent.setBody(stringBuffer.toString().getBytes());
+				//Each Row is delimited by "\n"
+				sbRowContent.append(jdbcInputDescriptor.getRowDelimeter());
+				actionEvent.setBody(sbRowContent.toString().getBytes());
 
-				// Partition Dates logic..
-				actionEvent.getHeaders().put(
-						ActionEventHeaderConstants.ENTITY_NAME.toUpperCase(),
-						jdbcInputDescriptor.getTargetEntityName());
+				
+				sbHiveNonPartitionColumns.append(ActionEventHeaderConstants.ENTITY_NAME);
+				actionEvent.getHeaders().put(ActionEventHeaderConstants.ENTITY_NAME.toUpperCase(),
+						             jdbcInputDescriptor.getTargetEntityName());
+				
 				actionEvent.getHeaders().put(ActionEventHeaderConstants.LINES_TERMINATED_BY,
-				jdbcInputDescriptor.getRowDelimeter());
+									 jdbcInputDescriptor.getRowDelimeter());
 				
 				actionEvent.getHeaders().put(ActionEventHeaderConstants.FIELDS_TERMINATED_BY,
-						jdbcInputDescriptor.getFieldDelimeter());
+									 jdbcInputDescriptor.getFieldDelimeter());
 
+				// Partition Dates logic..
 				if (jdbcInputDescriptor.getSnapshot() != null
-						&& jdbcInputDescriptor.getSnapshot().equalsIgnoreCase(
-								"YES")) {
+									  && jdbcInputDescriptor.getSnapshot().equalsIgnoreCase("YES")) {
 					// get current date and format it to string
-					actionEvent.getHeaders()
-							.put(ActionEventHeaderConstants.DATE,
-									new SimpleDateFormat("YYYYMMDD")
-											.format(new Date()));
-					actionEvent.getHeaders().put(
-							ActionEventHeaderConstants.SNAPSHOT, "snapshot");
-				}
-				if (datePartition != null) {
-					actionEvent.getHeaders().put(
-							ActionEventHeaderConstants.DATE, datePartition);
+					actionEvent.getHeaders().put(ActionEventHeaderConstants.DATE, 
+										 dateFormatHolder.get().format(new Date()));
 				} else {
-					actionEvent.getHeaders()
-							.put(ActionEventHeaderConstants.DATE,
-									new SimpleDateFormat("yyyMMdd")
-											.format(new Date()));
+				if (datePartition != null) {
+					actionEvent.getHeaders().put(ActionEventHeaderConstants.DATE, datePartition);
+				} else
+					actionEvent.getHeaders().put(ActionEventHeaderConstants.HIVE_PARTITION_REQUIRED, "false");
 					
 				}
-                
+				
+				
+				if (actionEvent.getHeaders().get(ActionEventHeaderConstants.ENTITY_NAME.toUpperCase()) != null)
+					actionEvent.getHeaders().put(ActionEventHeaderConstants.ENTITY_NAME,
+										 actionEvent.getHeaders().get(ActionEventHeaderConstants.ENTITY_NAME.toUpperCase()));
+				
+				
+				if (actionEvent.getHeaders().get(ActionEventHeaderConstants.DATE) != null){
+					actionEvent.getHeaders().put(ActionEventHeaderConstants.INPUT_DESCRIPTOR, 
+										 actionEvent.getHeaders().get(ActionEventHeaderConstants.DATE));
+				} else
+					actionEvent.getHeaders().put(ActionEventHeaderConstants.INPUT_DESCRIPTOR, 
+										 actionEvent.getHeaders().get(ActionEventHeaderConstants.ENTITY_NAME) + JdbcConstants.WITH_NO_PARTITION);
+				    
+				actionEvent.getHeaders().put(ActionEventHeaderConstants.HIVE_NON_PARTITION_NAMES, 
+						    		 sbHiveNonPartitionColumns.toString());
 				/*
 				 * Check for outputChannel map. get the eventList of channels.
 				 * check the criteria and put the message.
 				 */
+				//Maintain the partition value in runtime info and set the validation ready when it is changed.
+				//Challenge is how to maintain the previous actionEvent in the context every time.
 				if (getOutputChannel() != null) {
 					getOutputChannel().put(actionEvent);
 				}
@@ -288,9 +288,8 @@ public class DataCleansingHandler extends AbstractHandler {
 		}
 		long endTime = System.currentTimeMillis();
 
-		logger.info("Data Cleansing Handler during processing records",
-				"Time taken to process action Events is ={} milliseconds",
-				(endTime - startTime));
+		logger.info("Data Cleansing Handler during processing records","Time taken to process action Events is ={} milliseconds",
+										(endTime - startTime));
 		// getHandlerContext().createSingleItemEventList(actionEvent);
 		if (!actionEvents.isEmpty()) {
 			getSimpleJournal().setEventList(actionEvents);
@@ -303,6 +302,28 @@ public class DataCleansingHandler extends AbstractHandler {
 		return statusToReturn;
 
 	}
+	
+	
+	/**
+	 * dateFormatHolder.get() used to get an instance of SimpleDateFormat object
+	 */
+	private static final ThreadLocal<SimpleDateFormat> historicDateFormatHolder = new ThreadLocal<SimpleDateFormat>() {
+		@Override
+		protected SimpleDateFormat initialValue() {
+			return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+		}
+	};
+	
+	
+	/**
+	 * dateFormatHolder.get() used to get an instance of SimpleDateFormat object
+	 */
+	private static final ThreadLocal<SimpleDateFormat> dateFormatHolder = new ThreadLocal<SimpleDateFormat>() {
+		@Override
+		protected SimpleDateFormat initialValue() {
+			return new SimpleDateFormat("yyyyMMdd");
+		}
+	};
 
 	private HandlerJournal getSimpleJournal() throws HandlerException {
 		HandlerJournal simpleJournal = getNonNullJournal(SimpleJournal.class);

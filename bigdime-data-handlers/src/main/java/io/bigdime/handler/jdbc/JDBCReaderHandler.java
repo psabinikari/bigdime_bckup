@@ -6,6 +6,7 @@ import java.sql.Timestamp;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -74,8 +75,8 @@ public class JDBCReaderHandler extends AbstractHandler {
 	private JdbcTemplate jdbcTemplate;
 
 	private String sql;
-	//@Value("${hiveDBName}")
-	//private String hiveDBName;
+	@Value("${hiveDBName}")
+	private String hiveDBName;
 	// private boolean splitByFlag = false;
 	private String columnValue;
 	private String highestIncrementalColumnValue;
@@ -135,11 +136,19 @@ public class JDBCReaderHandler extends AbstractHandler {
 		try {
 			adaptorThreadStatus = preProcess();
 		} catch (RuntimeInfoStoreException e) {
-			e.printStackTrace();
+			//e.printStackTrace();
+			logger.alert(ALERT_TYPE.INGESTION_FAILED,ALERT_CAUSE.APPLICATION_INTERNAL_ERROR,
+					ALERT_SEVERITY.BLOCKER,
+					"\"jdbcAdaptor RuntimeInfoStore exception\"  TableName = {} error={}",
+					jdbcInputDescriptor.getEntityName(), e.toString());
 		} catch (JSONException e) {
-			e.printStackTrace();
+			logger.alert(ALERT_TYPE.INGESTION_FAILED,ALERT_CAUSE.APPLICATION_INTERNAL_ERROR,
+					ALERT_SEVERITY.BLOCKER,"\"jdbcAdaptor json formatter exception\" jsonString={} error={}",
+					jsonStr, e.toString());
 		} catch (JdbcHandlerException e) {
-			e.printStackTrace();
+			logger.alert(ALERT_TYPE.INGESTION_FAILED,ALERT_CAUSE.APPLICATION_INTERNAL_ERROR,
+					ALERT_SEVERITY.BLOCKER,"\"jdbcAdaptor jdbcHandler exception\" TableName={} error={}",
+					jdbcInputDescriptor.getEntityName(), e.toString());
 		}
 
 		if (adaptorThreadStatus != null) {
@@ -209,7 +218,7 @@ public class JDBCReaderHandler extends AbstractHandler {
 			// Put into Metadata...
 			jdbcMetadataManagment.checkAndUpdateMetadata(metasegment,
 					jdbcInputDescriptor.getTargetEntityName(),
-					jdbcInputDescriptor.getColumnList(), metadataStore);
+					jdbcInputDescriptor.getColumnList(), metadataStore,hiveDBName);
 			// Check if Runtime details Exists..
 			
 			/*if (jdbcRuntimeManagement.findRTIEntryExistence(
@@ -270,8 +279,11 @@ public class JDBCReaderHandler extends AbstractHandler {
 		try {
 			runtimeInfo = getOneQueuedRuntimeInfo(runTimeInfoStore,jdbcInputDescriptor.getEntityName());
 		} catch (RuntimeInfoStoreException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			
+			logger.alert(ALERT_TYPE.INGESTION_FAILED, ALERT_CAUSE.APPLICATION_INTERNAL_ERROR,
+					ALERT_SEVERITY.BLOCKER,
+					"\"jdbcAdaptor RuntimeInfoStore exception while getting current value\" TableName:{} error={}",
+					jdbcInputDescriptor.getEntityName(),e.toString());
 		}
 		if (runtimeInfo != null)
 			currentIncrementalColumnValue = runtimeInfo.getProperties().get(
@@ -295,7 +307,7 @@ public class JDBCReaderHandler extends AbstractHandler {
 				"Latest Incremented Repository Value= {}", repoColumnValue);
 		if (repoColumnValue != null)
 			columnValue = repoColumnValue;
-
+        //if(columnValue.contains(".")) columnValue = columnValue.substring(0,columnValue.indexOf("."));
 		logger.debug("JDBC Reader Handler in processing ",
 				"actual sql={} latestIncrementalValue={}", sql, columnValue);
 		List<Map<String, Object>> rows = new ArrayList<Map<String, Object>>();
@@ -307,13 +319,17 @@ public class JDBCReaderHandler extends AbstractHandler {
 					if (driverName.indexOf(JdbcConstants.ORACLE_DRIVER) > JdbcConstants.INTEGER_CONSTANT_ZERO
 							&& jdbcInputDescriptor.getIncrementedColumnType()
 									.equalsIgnoreCase("DATE")) {
+						
+						Date date = dateFormatHolder.get().parse(columnValue);
 						rows = jdbcTemplate
 								.queryForList(
 										sql,
-										new Object[] { new Timestamp(
-												(new SimpleDateFormat(
+										new Object[] { Timestamp.valueOf(columnValue)});
+						;
+												/*(new SimpleDateFormat(
 														DATE_FORMAT)).parse(
 														columnValue).getTime()) });
+														new Timestamp(date.getTime())*/
 					} else
 						rows = jdbcTemplate.queryForList(sql,
 								new Object[] { columnValue });
@@ -322,8 +338,8 @@ public class JDBCReaderHandler extends AbstractHandler {
 							ALERT_TYPE.INGESTION_FAILED,
 							ALERT_CAUSE.APPLICATION_INTERNAL_ERROR,
 							ALERT_SEVERITY.BLOCKER,
-							"\"Incremental column: Date parser exception\" inputDescription={} error={}",
-							columnValue, e.toString());
+							"\"Incremental column: Date parser exception\" TableName={} inputDescription={} error={}",
+							jdbcInputDescriptor.getEntityName(), columnValue, e.toString());
 				}
 			} else
 				rows = jdbcTemplate.queryForList(sql,
@@ -352,9 +368,6 @@ public class JDBCReaderHandler extends AbstractHandler {
 		// Assigning the current incremental value..
 		if (jdbcInputDescriptor.getIncrementedBy().length() > JdbcConstants.INTEGER_CONSTANT_ZERO
 				&& highestIncrementalColumnValue != null) {
-			/*boolean highestValueStatus = jdbcRuntimeManagement
-					.saveCurrentHighestColumnValue(jdbcInputDescriptor,
-							highestIncrementalColumnValue, runTimeInfoStore);*/
 			HashMap<String, String> properties = new HashMap<String, String>();
 			properties.put(jdbcInputDescriptor.getIncrementedBy(), highestIncrementalColumnValue);
 			boolean highestValueStatus=false;
@@ -365,8 +378,12 @@ public class JDBCReaderHandler extends AbstractHandler {
 						jdbcInputDescriptor.getIncrementedColumnType(),
 						RuntimeInfoStore.Status.QUEUED, properties);
 			} catch (RuntimeInfoStoreException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+				
+				logger.alert(ALERT_TYPE.INGESTION_FAILED,
+						ALERT_CAUSE.APPLICATION_INTERNAL_ERROR,
+						ALERT_SEVERITY.BLOCKER,
+						"\"jdbcAdaptor RuntimeInfo Update exception\" TableName={} error={}",
+						jdbcInputDescriptor.getEntityName(), e.toString());
 			}
 			logger.info("JDBC Reader Handler saved highest incremental value",
 					"incremental column saved status(true/false)?",
@@ -379,6 +396,17 @@ public class JDBCReaderHandler extends AbstractHandler {
 
 		return splitByFlag;
 	}
+	
+	
+	/**
+	 * dateFormatHolder.get() used to get an instance of SimpleDateFormat object
+	 */
+	private static final ThreadLocal<SimpleDateFormat> dateFormatHolder = new ThreadLocal<SimpleDateFormat>() {
+		@Override
+		protected SimpleDateFormat initialValue() {
+			return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+		}
+	};
 
 	/**
 	 * This method sets each record in Action Event for further Data cleansing
