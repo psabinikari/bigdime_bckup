@@ -53,8 +53,27 @@ public class RecordCountValidator implements Validator {
 	
 	private String name;
 
+	protected boolean isReadyToValidate(final ActionEvent actionEvent) {
+		String hdfsBasePath = actionEvent.getHeaders().get(ActionEventHeaderConstants.HDFS_PATH);
+		String hdfsFileName = actionEvent.getHeaders().get(ActionEventHeaderConstants.HDFS_FILE_NAME);
+
+
+		String totalSize = actionEvent.getHeaders().get(ActionEventHeaderConstants.SOURCE_FILE_TOTAL_SIZE);
+		String totalRead = actionEvent.getHeaders().get(ActionEventHeaderConstants.SOURCE_FILE_TOTAL_READ);
+		
+		String validationReady = actionEvent.getHeaders().get(ActionEventHeaderConstants.VALIDATION_READY);
+		if (validationReady == null || !validationReady.equalsIgnoreCase("true")) {
+			logger.info(AdaptorConfig.getInstance().getAdaptorContext().getAdaptorName(),
+					"processing RecordCountValidator",
+					"Record Count validation being skipped, totalSize={} totalRead={} hdfsBasePath={} hdfsFileName={} validationReady={}",
+					totalSize, totalRead, hdfsBasePath, hdfsFileName, validationReady);
+			return false;
+		}
+		return true;
+	}
+	
 	/**
-	 * This validate method will compare Hdfs record count and source record
+	 * This validate method will compare Hdfs record count(get from Hive) and source record
 	 * count
 	 * 
 	 * @param actionEvent
@@ -89,6 +108,11 @@ public class RecordCountValidator implements Validator {
 			throw new NumberFormatException();
 		}
 
+		if (!isReadyToValidate(actionEvent)) {
+			validationPassed.setValidationResult(ValidationResult.NOT_READY);
+			return validationPassed;
+		}
+		
 		commonCheckValidator.checkNullStrings(ActionEventHeaderConstants.SOURCE_RECORD_COUNT, srcRCString);
 		try {
 			sourceRecordCount = Integer.parseInt(srcRCString);
@@ -140,7 +164,7 @@ public class RecordCountValidator implements Validator {
 	}
 
 	/**
-	 * This is for hdfs record count using WebHdfs
+	 * This is for hdfs record count using Hive
 	 * 
 	 * @param fileName
 	 *            hdfs file name
@@ -159,12 +183,12 @@ public class RecordCountValidator implements Validator {
 			Iterator<String> iter = partitionNames.iterator();
 			while (iter.hasNext()) {
 				String key = iter.next();
-				if(!key.equals(ActionEventHeaderConstants.ENTITY_NAME.toLowerCase())){
-				filterValue = key
+				if(!key.equalsIgnoreCase(ActionEventHeaderConstants.ENTITY_NAME)){
+					filterValue = key
 						+ "=\""
 						+ partitionMap.get(key)
 						+ "\"";
-				sb.append(filterValue);
+					sb.append(filterValue);
 				}
 			}
 		}
