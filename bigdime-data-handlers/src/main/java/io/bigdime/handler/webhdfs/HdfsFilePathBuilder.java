@@ -169,16 +169,26 @@ public class HdfsFilePathBuilder {
 		if ($Index != -1) {
 			for (final Entry<String, String> tokenHeaderNameEntry : tokenToHeaderNameMap.entrySet()) {
 				String headerValue = actionEvent.getHeaders().get(tokenHeaderNameEntry.getValue().toUpperCase());
+				
 				if (headerValue == null) {
+					String isPartitionPathRequired = actionEvent.getHeaders().get(ActionEventHeaderConstants.HIVE_PARTITION_REQUIRED);
+					if (isPartitionPathRequired != null && isPartitionPathRequired.equalsIgnoreCase("false")){
+						detokenizedHdfsPath = detokenizedHdfsPath.replace(tokenHeaderNameEntry.getKey(), "");
+					} else
 					throw new InvalidDataException("no header with name=" + tokenHeaderNameEntry.getValue()
 							+ " found in ActionEvent. This is needed to compute the filepath on hdfs. src="
 							+ actionEvent.getHeaders().get("src-desc"));
-				}
+				} else {
 				hivePartitionNameValueMap.put(tokenHeaderNameEntry.getValue(), headerValue);
 
 				detokenizedHdfsPath = detokenizedHdfsPath.replace(tokenHeaderNameEntry.getKey(), headerValue);
+				}
+				} 
+					
 			}
-		}
+		
+		detokenizedHdfsPath = addTrailingSlashToPath(detokenizedHdfsPath);
+		
 		return detokenizedHdfsPath;
 	}
 }

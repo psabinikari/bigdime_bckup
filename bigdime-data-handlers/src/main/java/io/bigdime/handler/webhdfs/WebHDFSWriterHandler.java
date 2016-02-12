@@ -278,6 +278,7 @@ public class WebHDFSWriterHandler extends AbstractHandler {
 							payloadEmpty, hdfsFileName, getPreviousHdfsFileName(journal));
 					if (!payloadEmpty) {
 						logger.info(handlerPhase, "writing to hdfs, validation should be performed");
+						prevActionEvent.getHeaders().put(ActionEventHeaderConstants.VALIDATION_READY, Boolean.TRUE.toString());
 						ActionEvent returnEvent = writeToHdfs(getPreviousHdfsPath(journal), payload.toByteArray(),
 								getPreviousHdfsFileName(journal), hdfsFilePathBuilder, prevActionEvent);
 						payloadEmpty = true;
@@ -306,6 +307,8 @@ public class WebHDFSWriterHandler extends AbstractHandler {
 							"writing to hdfs. previousHdfsPath={} detokenizedHdfsPath={} previousHdfsPathWithName={} detokenizedHdfsPathWithName={}",
 							getPreviousHdfsPath(journal), detokenizedHdfsPath, getPreviousHdfsPathWithName(journal),
 							detokenizedHdfsPathWithName);
+					//actionEvent.getHeaders().put(ActionEventHeaderConstants.READ_COMPLETE, Boolean.FALSE.toString());
+					actionEvent.getHeaders().put(ActionEventHeaderConstants.VALIDATION_READY, Boolean.FALSE.toString());
 					ActionEvent returnEvent = writeToHdfs(detokenizedHdfsPath, payload.toByteArray(), hdfsFileName,
 							hdfsFilePathBuilder, actionEvent);
 					getHandlerContext().createSingleItemEventList(returnEvent);
@@ -347,15 +350,17 @@ public class WebHDFSWriterHandler extends AbstractHandler {
 		String partitionNames = null;
 		String partitionValues = null;
 		for (Entry<String, String> hivePartitionNameValue : hdfsFilePathBuilder.getPartitionNameValueMap().entrySet()) {
-			if (partitionValues == null) {
-				partitionValues = hivePartitionNameValue.getValue();
-				partitionNames = hivePartitionNameValue.getKey();
-			} else {
-				partitionValues += "," + hivePartitionNameValue.getValue();
-				partitionNames += "," + hivePartitionNameValue.getKey();
-			}
+			
+			if(!isNonPartitionKey(inputEvent,hivePartitionNameValue.getKey()))
+				if (partitionValues == null) {
+					partitionValues = hivePartitionNameValue.getValue();
+					partitionNames = hivePartitionNameValue.getKey();
+				} else {
+					partitionValues += "," + hivePartitionNameValue.getValue();
+					partitionNames += "," + hivePartitionNameValue.getKey();
+				}
 		}
-		logger.debug(handlerPhase, "partitionNames={} partitionValues={} hdfsFileName={}", partitionNames,
+		logger.info(handlerPhase, "partitionNames={} partitionValues={} hdfsFileName={}", partitionNames,
 				partitionValues, hdfsFileName);
 		ActionEvent actionEvent = new ActionEvent(inputEvent);
 
@@ -376,17 +381,31 @@ public class WebHDFSWriterHandler extends AbstractHandler {
 
 	}
 	
+	private boolean isNonPartitionKey(ActionEvent inputEvent,String hivePartitionName){
+		
+		boolean isNonPartition = false;
+		String hiveNonPartitionNames = inputEvent.getHeaders().get(ActionEventHeaderConstants.HIVE_NON_PARTITION_NAMES);
+		if(hiveNonPartitionNames == null)
+			return isNonPartition;
+		
+		if(hiveNonPartitionNames != null){
+			String[] hiveNonPartitionStNames = hiveNonPartitionNames.split(",");
+			for(String hiveNonPartitionName: hiveNonPartitionStNames)
+				if(hivePartitionName.equalsIgnoreCase(hiveNonPartitionName))
+					isNonPartition = true;
+			
+		}
+		
+		
+		return isNonPartition;
+		
+	}
+	
 	private void initializeRecordCountInJournal(final ActionEvent actionEvent,
 			final WebHDFSWriterHandlerJournal journal) throws RuntimeInfoStoreException {
 		if (journal.getRecordCount() < 0) {
 			String entityName = actionEvent.getHeaders().get(ActionEventHeaderConstants.ENTITY_NAME);
-			if(entityName == null)
-				entityName = actionEvent.getHeaders().get(ActionEventHeaderConstants.ENTITY_NAME.toUpperCase());
-				
 			String inputDescriptor = actionEvent.getHeaders().get(ActionEventHeaderConstants.INPUT_DESCRIPTOR);
-			if(inputDescriptor == null){
-				inputDescriptor = actionEvent.getHeaders().get(ActionEventHeaderConstants.DATE);
-			}
 			try {
 				RuntimeInfo runtimeInfo = runtimeInfoStore.get(AdaptorConfig.getInstance().getName(), entityName,
 						inputDescriptor);
