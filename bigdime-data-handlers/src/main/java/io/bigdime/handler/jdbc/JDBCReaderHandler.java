@@ -3,10 +3,7 @@ package io.bigdime.handler.jdbc;
 
 import java.io.Serializable;
 import java.sql.Timestamp;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,7 +15,6 @@ import org.json.JSONException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Scope;
-import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
@@ -55,7 +51,7 @@ public class JDBCReaderHandler extends AbstractHandler {
 			LoggerFactory.getLogger(JDBCReaderHandler.class));
 
 	@Autowired
-	private DataSource sqlDataSource;
+	private DataSource lazyConnectionDataSourceProxy;
 	@Autowired
 	private MetadataStore metadataStore;
 	@Autowired
@@ -69,8 +65,8 @@ public class JDBCReaderHandler extends AbstractHandler {
 	private String splitSize;
 	@Value("${date.format}")
 	private String DATE_FORMAT;
-	@Value("${runtime.entry.initial.date.value}")
-	private String initialRuntimeDateEntry;
+	//@Value("${runtime.entry.initial.date.value}")
+	private static String initialRuntimeDateEntry="1900-01-01 00:00:00";
 
 	private JdbcTemplate jdbcTemplate;
 
@@ -159,7 +155,7 @@ public class JDBCReaderHandler extends AbstractHandler {
 	}
 
 	public void setDataSource(DataSource dataSource) {
-		this.sqlDataSource = dataSource;
+		this.lazyConnectionDataSourceProxy = dataSource;
 	}
 
 	public JDBCReaderHandler() {
@@ -180,9 +176,8 @@ public class JDBCReaderHandler extends AbstractHandler {
 			JSONException, RuntimeInfoStoreException {
 		// Get configured table details..
 		boolean processFlag = false;
-		jdbcTemplate = new JdbcTemplate(sqlDataSource);
+		jdbcTemplate = new JdbcTemplate(lazyConnectionDataSourceProxy);
 		jdbcMetadataManagment = new JdbcMetadataManagement();
-		//jdbcRuntimeManagement = new JdbcRuntimeManagement();
 		if (!StringUtils.isEmpty(sql)) {
 			// format Query...
 
@@ -190,8 +185,6 @@ public class JDBCReaderHandler extends AbstractHandler {
 			// Get Source Metadata..
 			metasegment = jdbcMetadataManagment.getSourceMetadata(
 					jdbcInputDescriptor, jdbcTemplate);
-			//Setting target database..
-			//metasegment.setDatabaseName(hiveDBName);
 			
 
 			logger.debug("Retrieved JDBC Reader Handler Source Metadata",
@@ -220,20 +213,12 @@ public class JDBCReaderHandler extends AbstractHandler {
 					jdbcInputDescriptor.getTargetEntityName(),
 					jdbcInputDescriptor.getColumnList(), metadataStore,hiveDBName);
 			// Check if Runtime details Exists..
-			
-			/*if (jdbcRuntimeManagement.findRTIEntryExistence(
-					jdbcInputDescriptor.getEntityName(),
-					jdbcInputDescriptor.getIncrementedColumnType(),
-					runTimeInfoStore) == JdbcConstants.INTEGER_CONSTANT_ZERO) {*/
 				if (getOneQueuedRuntimeInfo(runTimeInfoStore,jdbcInputDescriptor.getEntityName()) == null){
 
 				// Insert into Runtime Data...
 				if (jdbcInputDescriptor.getIncrementedBy() != null
 						&& jdbcInputDescriptor.getIncrementedBy().length() > JdbcConstants.INTEGER_CONSTANT_ZERO) {
 					
-					/*  boolean runtimeInsertionFlag = jdbcRuntimeManagement
-					  .insertRuntimeEntry(driverName, jdbcInputDescriptor,
-					  initialRuntimeDateEntry, runTimeInfoStore);*/
 					HashMap<String, String> properties = new HashMap<String, String>();
 					if (driverName
 							.equalsIgnoreCase(JdbcConstants.ORACLE_DRIVER_NAME)
@@ -298,16 +283,13 @@ public class JDBCReaderHandler extends AbstractHandler {
 	 */
 	public boolean processRecords() {
 		boolean splitByFlag = true;
-		jdbcTemplate = new JdbcTemplate(sqlDataSource);
-		/*String repoColumnValue = jdbcRuntimeManagement
-				.findColumnValueByTableNameFromRTI(jdbcInputDescriptor,
-						runTimeInfoStore);*/
+		jdbcTemplate = new JdbcTemplate(lazyConnectionDataSourceProxy);
+		
 		String repoColumnValue = getCurrentColumnValue();
 		logger.debug("JDBC Reader Handler in process records",
 				"Latest Incremented Repository Value= {}", repoColumnValue);
 		if (repoColumnValue != null)
 			columnValue = repoColumnValue;
-        //if(columnValue.contains(".")) columnValue = columnValue.substring(0,columnValue.indexOf("."));
 		logger.debug("JDBC Reader Handler in processing ",
 				"actual sql={} latestIncrementalValue={}", sql, columnValue);
 		List<Map<String, Object>> rows = new ArrayList<Map<String, Object>>();
@@ -315,32 +297,21 @@ public class JDBCReaderHandler extends AbstractHandler {
 		long startTime = System.currentTimeMillis();
 		if (sql.contains(JdbcConstants.QUERY_PARAMETER)) {
 			if (columnValue != null) {
-				try {
+				
 					if (driverName.indexOf(JdbcConstants.ORACLE_DRIVER) > JdbcConstants.INTEGER_CONSTANT_ZERO
 							&& jdbcInputDescriptor.getIncrementedColumnType()
 									.equalsIgnoreCase("DATE")) {
 						
-						Date date = dateFormatHolder.get().parse(columnValue);
 						rows = jdbcTemplate
 								.queryForList(
 										sql,
 										new Object[] { Timestamp.valueOf(columnValue)});
 						;
-												/*(new SimpleDateFormat(
-														DATE_FORMAT)).parse(
-														columnValue).getTime()) });
-														new Timestamp(date.getTime())*/
+												
 					} else
 						rows = jdbcTemplate.queryForList(sql,
 								new Object[] { columnValue });
-				} catch (DataAccessException | ParseException e) {
-					logger.alert(
-							ALERT_TYPE.INGESTION_FAILED,
-							ALERT_CAUSE.APPLICATION_INTERNAL_ERROR,
-							ALERT_SEVERITY.BLOCKER,
-							"\"Incremental column: Date parser exception\" TableName={} inputDescription={} error={}",
-							jdbcInputDescriptor.getEntityName(), columnValue, e.toString());
-				}
+				
 			} else
 				rows = jdbcTemplate.queryForList(sql,
 						new Object[] { JdbcConstants.INTEGER_CONSTANT_ZERO });
@@ -353,10 +324,8 @@ public class JDBCReaderHandler extends AbstractHandler {
 				"Time taken to fetch records from table ={} from a columnValue={} with a fetchSize={} is {} milliseconds",
 				jdbcInputDescriptor.getEntityName(), columnValue, splitSize,
 				(endTime - startTime));
-		logger.debug("JDBC Reader Handler during processing records",
-				"columns in the tableName={} are {}",
-				jdbcInputDescriptor.getEntityName(),
-				jdbcInputDescriptor.getColumnList());
+		logger.debug("JDBC Reader Handler during processing records","columns in the tableName={} are {}",
+				jdbcInputDescriptor.getEntityName(),jdbcInputDescriptor.getColumnList());
 		// Process each row to HDFS...
 		if (rows.size() > JdbcConstants.INTEGER_CONSTANT_ZERO)
 			processEachRecord(rows);
@@ -368,6 +337,7 @@ public class JDBCReaderHandler extends AbstractHandler {
 		// Assigning the current incremental value..
 		if (jdbcInputDescriptor.getIncrementedBy().length() > JdbcConstants.INTEGER_CONSTANT_ZERO
 				&& highestIncrementalColumnValue != null) {
+			
 			HashMap<String, String> properties = new HashMap<String, String>();
 			properties.put(jdbcInputDescriptor.getIncrementedBy(), highestIncrementalColumnValue);
 			boolean highestValueStatus=false;
@@ -386,8 +356,7 @@ public class JDBCReaderHandler extends AbstractHandler {
 						jdbcInputDescriptor.getEntityName(), e.toString());
 			}
 			logger.info("JDBC Reader Handler saved highest incremental value",
-					"incremental column saved status(true/false)?",
-					highestValueStatus);
+					"incremental column saved status(true/false)?",highestValueStatus);
 			columnValue = highestIncrementalColumnValue;
 		}
 		if (jdbcInputDescriptor.getIncrementedBy().length() == JdbcConstants.INTEGER_CONSTANT_ZERO
@@ -396,17 +365,6 @@ public class JDBCReaderHandler extends AbstractHandler {
 
 		return splitByFlag;
 	}
-	
-	
-	/**
-	 * dateFormatHolder.get() used to get an instance of SimpleDateFormat object
-	 */
-	private static final ThreadLocal<SimpleDateFormat> dateFormatHolder = new ThreadLocal<SimpleDateFormat>() {
-		@Override
-		protected SimpleDateFormat initialValue() {
-			return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-		}
-	};
 
 	/**
 	 * This method sets each record in Action Event for further Data cleansing
@@ -414,10 +372,10 @@ public class JDBCReaderHandler extends AbstractHandler {
 	 * @param rows
 	 */
 	private void processEachRecord(List<Map<String, Object>> rows) {
-
+        int rowCount=0;
 		List<ActionEvent> actionEvents = new ArrayList<ActionEvent>();
 		for (Map<String, Object> row : rows) {
-
+            ++rowCount;
 			// Preparing data to handover to DataCleansing Handler
 			byte[] body = SerializationUtils.serialize((Serializable) row);
 			if (body != null) {
@@ -430,11 +388,73 @@ public class JDBCReaderHandler extends AbstractHandler {
 								jdbcInputDescriptor.getColumnList().indexOf(
 										jdbcInputDescriptor.getColumnName())))
 						+ "";
-
+              if(rowCount==rows.size()) {
+            	  List<ActionEvent> ignoredActionEventList = getIgnoredBatchRecords(sql.replaceAll(">","="),row,highestIncrementalColumnValue);
+            	  if(ignoredActionEventList!=null && ignoredActionEventList.size() > 0){
+            		  actionEvents.addAll(ignoredActionEventList);
+            	  }
+              
+              }
 			}
 		}
 		if (actionEvents.size() > 0)
 			getHandlerContext().setEventList(actionEvents);
 	}
+	
+	public List<ActionEvent> getIgnoredBatchRecords(String ignoredRowsSql,Map<String,Object> lastActionEventRow, String conditionValue){
+		List<ActionEvent> ignoredActionEvents = new ArrayList<ActionEvent>();
+		
+		
+		boolean isRowExist = false;
+		List<Map<String, Object>> ignoredRows = new ArrayList<Map<String, Object>>();
+		if (ignoredRowsSql.contains(JdbcConstants.QUERY_PARAMETER)) {
+			if (conditionValue != null) {
+					if (driverName.indexOf(JdbcConstants.ORACLE_DRIVER) > JdbcConstants.INTEGER_CONSTANT_ZERO
+							&& jdbcInputDescriptor.getIncrementedColumnType()
+									.equalsIgnoreCase("DATE")) {
+						
+						ignoredRows = jdbcTemplate
+								.queryForList(
+										ignoredRowsSql,
+										new Object[] { Timestamp.valueOf(conditionValue)});
+						;
+												
+					} else
+						ignoredRows = jdbcTemplate.queryForList(ignoredRowsSql,
+								new Object[] { conditionValue });
+			} else
+				ignoredRows = jdbcTemplate.queryForList(ignoredRowsSql,
+						new Object[] { JdbcConstants.INTEGER_CONSTANT_ZERO });
+		} else {
+			ignoredRows = jdbcTemplate.queryForList(ignoredRowsSql);
+		}
+		
+		if (ignoredRows.size() > JdbcConstants.INTEGER_CONSTANT_ZERO)
+			//processEachRecord(ignoredRows);
+			for(Map<String,Object> ignoredRow: ignoredRows){
+				boolean comparedRowsStatus = ignoredRow.equals(lastActionEventRow);
+				if(comparedRowsStatus) {
+					isRowExist = true;
+					continue;
+				} else {
+					if(isRowExist) {
+						byte[] body = SerializationUtils.serialize((Serializable) ignoredRow);
+						if (body != null) {
+							ActionEvent actionEvent = new ActionEvent();
+							actionEvent.setBody(body);
+							ignoredActionEvents.add(actionEvent);
+						}
+					}
+				}
+			}
+		else {
+			logger.info("JDBC Reader Handler during Ignored processing records",
+					"No more rows found for query={}", ignoredRowsSql);
+			//splitByFlag = false;
+		}
+		if(ignoredActionEvents.size() > 0) return ignoredActionEvents;
+		return null;
+	}
 
 }
+

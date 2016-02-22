@@ -4,7 +4,6 @@
 package io.bigdime.handler.jdbc;
 
 import java.sql.Timestamp;
-import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
@@ -16,8 +15,6 @@ import java.util.regex.Pattern;
 import javax.sql.DataSource;
 
 import org.apache.commons.lang.SerializationUtils;
-import org.joda.time.DateTime;
-import org.joda.time.format.DateTimeFormat;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Scope;
@@ -28,14 +25,10 @@ import com.google.common.base.Preconditions;
 
 import io.bigdime.adaptor.metadata.model.Metasegment;
 import io.bigdime.alert.LoggerFactory;
-import io.bigdime.alert.Logger.ALERT_CAUSE;
-import io.bigdime.alert.Logger.ALERT_SEVERITY;
-import io.bigdime.alert.Logger.ALERT_TYPE;
 import io.bigdime.core.ActionEvent;
 import io.bigdime.core.ActionEvent.Status;
 import io.bigdime.core.AdaptorConfigurationException;
 import io.bigdime.core.HandlerException;
-import io.bigdime.core.InvalidDataException;
 import io.bigdime.core.InvalidValueConfigurationException;
 import io.bigdime.core.commons.AdaptorLogger;
 import io.bigdime.core.config.AdaptorConfigConstants;
@@ -177,7 +170,7 @@ public class DataCleansingHandler extends AbstractHandler {
 
 			byte[] data = actionEvent.getBody();
 
-			StringBuffer sbRowContent = new StringBuffer();
+			StringBuffer sbFormattedRowContent = new StringBuffer();
 			StringBuffer sbHiveNonPartitionColumns = new StringBuffer();
 			String datePartition = null;
 			// @SuppressWarnings("unchecked")
@@ -188,18 +181,20 @@ public class DataCleansingHandler extends AbstractHandler {
 				for (int columnNamesListCount = 0; columnNamesListCount < jdbcInputDescriptor
 						.getColumnList().size(); columnNamesListCount++) {
 					// Ensure each field doesn't have rowlineDelimeter
-					Pattern p = Pattern.compile(jdbcInputDescriptor.getRowDelimeter());
+					//Pattern p = Pattern.compile(jdbcInputDescriptor.getRowDelimeter() -- "\n|\r");
+					Pattern p = Pattern.compile(JdbcConstants.FIELD_CHARACTERS_TO_REPLACE);
 					StringBuffer sbfMatcher = new StringBuffer();
+					
 					Matcher m = p.matcher(sbfMatcher.append(row.get(jdbcInputDescriptor.getColumnList().
 										get(columnNamesListCount))));
-					StringBuffer sbRemoveRowDelimeter = new StringBuffer();
+					StringBuffer sbFormattedField = new StringBuffer();
 					while (m.find()) {
-						m.appendReplacement(sbRemoveRowDelimeter, " ");
+						m.appendReplacement(sbFormattedField, JdbcConstants.FIELD_CHARACTERS_REPLACE_BY);
 					}
-					m.appendTail(sbRemoveRowDelimeter);
-					sbRowContent.append(sbRemoveRowDelimeter);
+					m.appendTail(sbFormattedField);
+					sbFormattedRowContent.append(sbFormattedField);
 					if (columnNamesListCount != jdbcInputDescriptor.getColumnList().size() - 1)
-						sbRowContent.append(jdbcInputDescriptor.getFieldDelimeter());
+						sbFormattedRowContent.append(jdbcInputDescriptor.getFieldDelimeter());
 
 					if (jdbcInputDescriptor.getIncrementedColumnType().indexOf("DATE") >= JdbcConstants.INTEGER_CONSTANT_ZERO
 							    || jdbcInputDescriptor.getIncrementedColumnType().indexOf("TIMESTAMP") >= JdbcConstants.INTEGER_CONSTANT_ZERO) {
@@ -207,32 +202,17 @@ public class DataCleansingHandler extends AbstractHandler {
 						if (jdbcInputDescriptor.getColumnList().get(columnNamesListCount)
 								.equalsIgnoreCase(jdbcInputDescriptor.getIncrementedBy())) {
 							
-							try {
-								Date datetime = historicDateFormatHolder.get().parse(row
-										.get(jdbcInputDescriptor.getColumnList().get(columnNamesListCount))
-										.toString());
-								//datePartition = (new Timestamp(datetime.getTime()).toString()).substring(0,10).replaceAll("-", "");
 								datePartition = Timestamp.valueOf(row
 										.get(jdbcInputDescriptor.getColumnList().get(columnNamesListCount))
 										.toString()).toString().substring(0,10).replaceAll("-","");
-							} catch (ParseException e) {
-
-								logger.alert(ALERT_TYPE.INGESTION_FAILED,ALERT_CAUSE.APPLICATION_INTERNAL_ERROR,
-										ALERT_SEVERITY.BLOCKER,"\"Incremental column: Date parser exception\" inputDescription={} error={}",
-										row
-										.get(jdbcInputDescriptor.getColumnList().get(columnNamesListCount))
-										.toString(), e.toString());
-								throw new InvalidDataException(" incremental column Date Parser exception :"+row
-										.get(jdbcInputDescriptor.getColumnList().get(columnNamesListCount))
-										.toString());
-							}
 						}
 					}
 				}
 
 				//Each Row is delimited by "\n"
-				sbRowContent.append(jdbcInputDescriptor.getRowDelimeter());
-				actionEvent.setBody(sbRowContent.toString().getBytes());
+				
+				sbFormattedRowContent.append(jdbcInputDescriptor.getRowDelimeter());
+				actionEvent.setBody(sbFormattedRowContent.toString().getBytes());
 
 				
 				sbHiveNonPartitionColumns.append(ActionEventHeaderConstants.ENTITY_NAME);
@@ -274,12 +254,12 @@ public class DataCleansingHandler extends AbstractHandler {
 				    
 				actionEvent.getHeaders().put(ActionEventHeaderConstants.HIVE_NON_PARTITION_NAMES, 
 						    		 sbHiveNonPartitionColumns.toString());
+				if(actionEvents.isEmpty())
+					actionEvent.getHeaders().put(ActionEventHeaderConstants.VALIDATION_READY, Boolean.TRUE.toString());
 				/*
 				 * Check for outputChannel map. get the eventList of channels.
 				 * check the criteria and put the message.
 				 */
-				//Maintain the partition value in runtime info and set the validation ready when it is changed.
-				//Challenge is how to maintain the previous actionEvent in the context every time.
 				if (getOutputChannel() != null) {
 					getOutputChannel().put(actionEvent);
 				}
@@ -302,17 +282,6 @@ public class DataCleansingHandler extends AbstractHandler {
 		return statusToReturn;
 
 	}
-	
-	
-	/**
-	 * dateFormatHolder.get() used to get an instance of SimpleDateFormat object
-	 */
-	private static final ThreadLocal<SimpleDateFormat> historicDateFormatHolder = new ThreadLocal<SimpleDateFormat>() {
-		@Override
-		protected SimpleDateFormat initialValue() {
-			return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-		}
-	};
 	
 	
 	/**
