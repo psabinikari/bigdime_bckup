@@ -31,6 +31,7 @@ import io.bigdime.core.HandlerException;
 import io.bigdime.core.InvalidValueConfigurationException;
 import io.bigdime.core.commons.AdaptorLogger;
 import io.bigdime.core.config.AdaptorConfigConstants;
+import io.bigdime.core.constants.ActionEventHeaderConstants;
 import io.bigdime.core.handler.AbstractHandler;
 import io.bigdime.core.runtimeinfo.RuntimeInfo;
 import io.bigdime.core.runtimeinfo.RuntimeInfoStore;
@@ -76,6 +77,7 @@ public class JDBCReaderHandler extends AbstractHandler {
 	// private boolean splitByFlag = false;
 	private String columnValue;
 	private String highestIncrementalColumnValue;
+	//private String maxIncrementalTableColumnValue;
 	private Metasegment metasegment;
 
 	private JdbcMetadataManagement jdbcMetadataManagment;
@@ -213,6 +215,8 @@ public class JDBCReaderHandler extends AbstractHandler {
 					jdbcInputDescriptor.getTargetEntityName(),
 					jdbcInputDescriptor.getColumnList(), metadataStore,hiveDBName);
 			// Check if Runtime details Exists..
+			//maxIncrementalTableColumnValue=(String)jdbcTemplate.queryForObject(
+				//	"SELECT MAX("+jdbcInputDescriptor.getIncrementedBy()+") FROM  "+jdbcInputDescriptor.getEntityName(),  String.class);
 				if (getOneQueuedRuntimeInfo(runTimeInfoStore,jdbcInputDescriptor.getEntityName()) == null){
 
 				// Insert into Runtime Data...
@@ -229,7 +233,8 @@ public class JDBCReaderHandler extends AbstractHandler {
 					else
 						properties.put(jdbcInputDescriptor.getIncrementedBy(),
 								JdbcConstants.INTEGER_CONSTANT_ZERO + "");
-
+					//if (StringUtils.isNotEmpty(maxIncrementalTableColumnValue))
+					//	properties.put(JdbcConstants.MAX_INCREMENTAL_COLUMN_VALUE, maxIncrementalTableColumnValue);
 					boolean runtimeInsertionFlag = updateRuntimeInfo(
 							runTimeInfoStore,
 							jdbcInputDescriptor.getEntityName(),
@@ -258,6 +263,7 @@ public class JDBCReaderHandler extends AbstractHandler {
 			return Status.BACKOFF;
 	}
 	
+
 	private String getCurrentColumnValue() {
 		String currentIncrementalColumnValue = null;
 		RuntimeInfo runtimeInfo = null;
@@ -340,6 +346,8 @@ public class JDBCReaderHandler extends AbstractHandler {
 			
 			HashMap<String, String> properties = new HashMap<String, String>();
 			properties.put(jdbcInputDescriptor.getIncrementedBy(), highestIncrementalColumnValue);
+			//if(StringUtils.isNotEmpty(maxIncrementalTableColumnValue))
+			//	properties.put(JdbcConstants.MAX_INCREMENTAL_COLUMN_VALUE, maxIncrementalTableColumnValue);
 			boolean highestValueStatus=false;
 			try {
 				highestValueStatus = updateRuntimeInfo(
@@ -397,8 +405,20 @@ public class JDBCReaderHandler extends AbstractHandler {
               }
 			}
 		}
-		if (actionEvents.size() > 0)
+		if (actionEvents.size() > 0){
+			
+			/*if (highestIncrementalColumnValue.equalsIgnoreCase(maxIncrementalTableColumnValue)){
+				int lastEvent = actionEvents.size();
+				ActionEvent actionEvent = actionEvents.get(lastEvent - 1);
+				
+				
+				if (actionEvent!=null){
+					actionEvent.getHeaders().put(ActionEventHeaderConstants.VALIDATION_READY, Boolean.TRUE.toString());
+				
+				}
+			}*/
 			getHandlerContext().setEventList(actionEvents);
+		}
 	}
 	
 	public List<ActionEvent> getIgnoredBatchRecords(String ignoredRowsSql,Map<String,Object> lastActionEventRow, String conditionValue){
