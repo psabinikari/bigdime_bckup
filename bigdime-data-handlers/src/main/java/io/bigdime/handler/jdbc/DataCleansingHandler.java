@@ -254,8 +254,8 @@ public class DataCleansingHandler extends AbstractHandler {
 				    
 				actionEvent.getHeaders().put(ActionEventHeaderConstants.HIVE_NON_PARTITION_NAMES, 
 						    		 sbHiveNonPartitionColumns.toString());
-				if(actionEvents.isEmpty())
-					actionEvent.getHeaders().put(ActionEventHeaderConstants.VALIDATION_READY, Boolean.TRUE.toString());
+				//if(actionEvents.isEmpty())
+					//actionEvent.getHeaders().put(ActionEventHeaderConstants.VALIDATION_READY, Boolean.TRUE.toString());
 				/*
 				 * Check for outputChannel map. get the eventList of channels.
 				 * check the criteria and put the message.
