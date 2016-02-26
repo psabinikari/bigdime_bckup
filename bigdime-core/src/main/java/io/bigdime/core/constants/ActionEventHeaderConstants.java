@@ -18,6 +18,8 @@ public final class ActionEventHeaderConstants {
 
 	public static final String HIVE_PARTITION_NAMES = "hive_partition_names";
 	public static final String HIVE_PARTITION_VALUES = "hive_partition_values";
+	public static final String HIVE_NON_PARTITION_NAMES = "hive_nonpartition_names";
+	public static final String HIVE_PARTITION_REQUIRED = "hivePartitionRequired";
 	public static final String HDFS_FILE_NAME = "hdfsFileName";
 	public static final String HDFS_PATH = "hdfsPath";
 	public static final String COMPLETE_HDFS_PATH = "completeHdfsPath";
@@ -62,8 +64,9 @@ public final class ActionEventHeaderConstants {
 	public static final String HIVE_PARTITION_LOCATION = "hivePartitionLocation";
 	public static final String CLEANUP_REQUIRED = "cleanupRequired";
 	public static final String READ_COMPLETE = "readComplete";
+	public static final String VALIDATION_READY = "validationReady";
 	
-	public static final String DATE = "DATE";
+	public static final String DATE = "DT";
 	public static final String SNAPSHOT = "SNAPSHOT";
 	
 	public static final String SCHEMA_TYPE_HIVE = "HIVE";
