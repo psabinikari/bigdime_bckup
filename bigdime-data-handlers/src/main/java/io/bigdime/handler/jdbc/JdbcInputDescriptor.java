@@ -62,7 +62,8 @@ public class JdbcInputDescriptor implements InputDescriptor<String>{
 		query = jsonObject.getString("query");
 		entityName = query.split(" ")[3];
 		incrementedBy = jsonObject.getString("incrementedBy");
-		partition = jsonObject.getString("partitionedColumns");
+		if (!jsonObject.isNull("partitionedColumns"))
+			partition = jsonObject.getString("partitionedColumns");
 		if (!jsonObject.isNull("fieldDelimeter"))
 			fieldDelimeter = jsonObject.getString("rowDelimeter");
 		if (fieldDelimeter == null || fieldDelimeter.length() == 0)
