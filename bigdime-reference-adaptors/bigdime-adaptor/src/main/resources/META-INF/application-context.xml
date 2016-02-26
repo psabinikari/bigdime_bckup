@@ -12,7 +12,8 @@
 	<context:component-scan
 		base-package="io.bigdime.adaptor.metadata, io.bigdime.runtimeinfo" />
 	<context:property-placeholder location="classpath:${env.properties}"
-		ignore-resource-not-found="false" ignore-unresolvable="true" />
+		 ignore-resource-not-found="false" ignore-unresolvable="true" />
+		
 
 
 	<bean name="columnCountValidator" class="io.bigdime.validation.ColumnCountValidator" />
@@ -20,13 +21,23 @@
 	<bean name="columnTypeValidator" class="io.bigdime.validation.ColumnTypeValidator" />
 
 	<bean id="sqlDataSource"
-		class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+		class="org.apache.commons.dbcp.BasicDataSource" lazy-init = "true" destroy-method="close">
 
-		<property name="driverClassName" value="${database.driverClassName}" />
-		<property name="url" value="${database.url}" />
-		<property name="username" value="${database.username}" />
-		<property name="password" value="${database.password}" />
+		<property name="driverClassName" value="${database.driverClassName:${metastore.database.driverClassName}}" />
+		<property name="url" value="${database.url:${metastore.database.url}}" />
+		<property name="username" value="${database.username:${metastore.database.username}}" />
+		<property name="password" value="${database.password:${metastore.database.password}}" />
+		<property name="initialSize" value="20" />
+		<property name="maxActive" value="10" />
+		<property name="testOnBorrow" value="true"/>
+		<property name="minEvictableIdleTimeMillis" value="120000"/>
+		<property name="timeBetweenEvictionRunsMillis" value="120000"/>
+		<property name="minIdle" value="10"/>
 	</bean>
+	
+	<bean name="lazyConnectionDataSourceProxy" class="org.springframework.jdbc.datasource.LazyConnectionDataSourceProxy">
+    <property name="targetDataSource" ref="sqlDataSource" />
+</bean>
 
 
 	<bean id="datasource" class="org.apache.commons.dbcp.BasicDataSource">
