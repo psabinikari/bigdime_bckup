@@ -133,7 +133,7 @@ public class JdbcMetadataManagement {
 	 */
 	public void checkAndUpdateMetadata(Metasegment metasegment,
 			String tableName, List<String> columnNamesList,
-			MetadataStore metadataStore) {
+			MetadataStore metadataStore,String databaseName) {
 		try {
 			if (metasegment != null) {
 				if (metasegment.getEntitees() != null)
@@ -143,6 +143,7 @@ public class JdbcMetadataManagement {
 							entity.setEntityName(tableName);
 					}
 			}
+			if(databaseName!=null) metasegment.setDatabaseName(databaseName);
 			Metasegment metaseg = metadataStore.getAdaptorMetasegment(
 					AdaptorConfig.getInstance().getName(),
 					JdbcConstants.METADATA_SCHEMA_TYPE, tableName);
