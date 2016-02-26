@@ -82,8 +82,6 @@ public class HiveMetaDataHandler extends AbstractHandler {
 			Preconditions.checkArgument(!actionEvents.isEmpty(), "eventList in HandlerContext can't be empty");
 			ActionEvent actionEvent = actionEvents.get(0);
 			String entityName = actionEvent.getHeaders().get(ActionEventHeaderConstants.ENTITY_NAME);
-			/*if (entityName == null)
-				entityName = actionEvent.getHeaders().get(ActionEventHeaderConstants.ENTITY_NAME.toUpperCase());*/
 			Preconditions.checkNotNull(entityName,"EntityName cannot be null");
 
 			Metasegment metasegment = metadataStore.getAdaptorMetasegment(AdaptorConfig.getInstance().getName(), "HIVE", entityName);
