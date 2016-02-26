@@ -220,8 +220,8 @@ public class WebHDFSWriterHandler extends AbstractHandler {
 			ActionEvent actionEvent = null;
 			ActionEvent prevActionEvent = null;
 			HdfsFilePathBuilder hdfsFilePathBuilder = null;
-			boolean validateCurrentActionEvents = false;
-			boolean validatePreviousPartitionActionEvents = false;
+			//boolean validateCurrentActionEvents = false;
+			//boolean validatePreviousPartitionActionEvents = false;
 			while (actionEventIter.hasNext()) {
 				actionEvent = actionEventIter.next();
 				buildFileName(actionEvent);
@@ -270,25 +270,25 @@ public class WebHDFSWriterHandler extends AbstractHandler {
 					payload.write(actionEvent.getBody());
 					actionEventIter.remove();
 					payloadEmpty = false;
-					if (actionEvent.getHeaders().get(ActionEventHeaderConstants.VALIDATION_READY) != null
+					/*if (actionEvent.getHeaders().get(ActionEventHeaderConstants.VALIDATION_READY) != null
 							&& actionEvent.getHeaders().get(ActionEventHeaderConstants.VALIDATION_READY).equalsIgnoreCase("true"))
 						validateCurrentActionEvents = true;
-					else{
+					else{*/
 					initializeRecordCountInJournal(actionEvent, journal);
 					journal.incrementRecordCount();
 					
 					prevActionEvent = actionEvent;
 					logger.debug(handlerPhase, "appended payload, record_count={} actionEvents.size={}",
 							journal.getRecordCount(), actionEvents.size());
-					}
+					//}
 				} else {
 					logger.debug(handlerPhase, "new hdfspath, payloadEmpty={} hdfsFileName={} previousHdfsFileName={}",
 							payloadEmpty, hdfsFileName, getPreviousHdfsFileName(journal));
 					if (!payloadEmpty) {
 						logger.info(handlerPhase, "writing to hdfs, validation should be performed");
-						prevActionEvent.getHeaders().put(ActionEventHeaderConstants.VALIDATION_READY, Boolean.TRUE.toString());
-						validatePreviousPartitionActionEvents = true;
-						/*ActionEvent returnEvent = writeToHdfs(getPreviousHdfsPath(journal), payload.toByteArray(),
+						//prevActionEvent.getHeaders().put(ActionEventHeaderConstants.VALIDATION_READY, Boolean.TRUE.toString());
+						//validatePreviousPartitionActionEvents = true;
+						ActionEvent returnEvent = writeToHdfs(getPreviousHdfsPath(journal), payload.toByteArray(),
 								getPreviousHdfsFileName(journal), hdfsFilePathBuilder, prevActionEvent);
 						payloadEmpty = true;
 						journal.setEventList(actionEvents);
@@ -301,10 +301,10 @@ public class WebHDFSWriterHandler extends AbstractHandler {
 						journal.setCurrentHdfsPathWithName(detokenizedHdfsPathWithName);
 						journal.setCurrentHdfsFileName(hdfsFileName);
 						journal.setRecordCount(0);
-						break;*/
+						break;
 					}
 				}
-				if(validatePreviousPartitionActionEvents || validateCurrentActionEvents) {
+				/*if(validatePreviousPartitionActionEvents || validateCurrentActionEvents) {
 					if(!payloadEmpty){
 						ActionEvent returnEvent = null;
 						if(validatePreviousPartitionActionEvents)
@@ -328,7 +328,7 @@ public class WebHDFSWriterHandler extends AbstractHandler {
 					}
 						
 					
-				}
+				}*/
 				if (StringUtils.isBlank(getPreviousHdfsPathWithName(journal))) {
 					journal.setCurrentHdfsPath(detokenizedHdfsPath);
 					journal.setCurrentHdfsPathWithName(detokenizedHdfsPathWithName);
@@ -342,8 +342,8 @@ public class WebHDFSWriterHandler extends AbstractHandler {
 							getPreviousHdfsPath(journal), detokenizedHdfsPath, getPreviousHdfsPathWithName(journal),
 							detokenizedHdfsPathWithName);
 					//actionEvent.getHeaders().put(ActionEventHeaderConstants.READ_COMPLETE, Boolean.FALSE.toString());
-					if(actionEvent.getHeaders().get(ActionEventHeaderConstants.VALIDATION_READY) == null)
-					actionEvent.getHeaders().put(ActionEventHeaderConstants.VALIDATION_READY, Boolean.FALSE.toString());
+					//if(actionEvent.getHeaders().get(ActionEventHeaderConstants.VALIDATION_READY) == null)
+					//actionEvent.getHeaders().put(ActionEventHeaderConstants.VALIDATION_READY, Boolean.FALSE.toString());
 					ActionEvent returnEvent = writeToHdfs(detokenizedHdfsPath, payload.toByteArray(), hdfsFileName,
 							hdfsFilePathBuilder, actionEvent);
 					getHandlerContext().createSingleItemEventList(returnEvent);
