@@ -226,8 +226,9 @@ public class JDBCReaderHandler extends AbstractHandler {
 					HashMap<String, String> properties = new HashMap<String, String>();
 					if (driverName
 							.equalsIgnoreCase(JdbcConstants.ORACLE_DRIVER_NAME)
-							&& jdbcInputDescriptor.getIncrementedColumnType()
-									.equalsIgnoreCase("DATE"))
+							&& (jdbcInputDescriptor.getIncrementedColumnType()
+									.equalsIgnoreCase("DATE") || jdbcInputDescriptor.getIncrementedColumnType()
+									.equalsIgnoreCase("TIMESTAMP")))
 						properties.put(jdbcInputDescriptor.getIncrementedBy(),
 								initialRuntimeDateEntry);
 					else
@@ -305,8 +306,9 @@ public class JDBCReaderHandler extends AbstractHandler {
 			if (columnValue != null) {
 				
 					if (driverName.indexOf(JdbcConstants.ORACLE_DRIVER) > JdbcConstants.INTEGER_CONSTANT_ZERO
-							&& jdbcInputDescriptor.getIncrementedColumnType()
-									.equalsIgnoreCase("DATE")) {
+							&& (jdbcInputDescriptor.getIncrementedColumnType()
+									.equalsIgnoreCase("DATE") || jdbcInputDescriptor.getIncrementedColumnType()
+									.equalsIgnoreCase("TIMESTAMP"))) {
 						
 						rows = jdbcTemplate
 								.queryForList(
@@ -430,8 +432,9 @@ public class JDBCReaderHandler extends AbstractHandler {
 		if (ignoredRowsSql.contains(JdbcConstants.QUERY_PARAMETER)) {
 			if (conditionValue != null) {
 					if (driverName.indexOf(JdbcConstants.ORACLE_DRIVER) > JdbcConstants.INTEGER_CONSTANT_ZERO
-							&& jdbcInputDescriptor.getIncrementedColumnType()
-									.equalsIgnoreCase("DATE")) {
+							&& (jdbcInputDescriptor.getIncrementedColumnType()
+									.equalsIgnoreCase("DATE") || jdbcInputDescriptor.getIncrementedColumnType()
+									.equalsIgnoreCase("TIMESTAMP"))) {
 						
 						ignoredRows = jdbcTemplate
 								.queryForList(
