@@ -244,23 +244,29 @@ public abstract class AbstractHandler implements Handler {
 	}
 
 	protected <T> boolean updateRuntimeInfoToStoreAfterValidation(final RuntimeInfoStore<RuntimeInfo> runtimeInfoStore,
-			boolean validationPassed, ActionEvent actionEvent) throws RuntimeInfoStoreException {
-		
-		String entityName = actionEvent.getHeaders().get(ActionEventHeaderConstants.ENTITY_NAME);
-		if(entityName == null)
-			entityName = actionEvent.getHeaders().get(ActionEventHeaderConstants.ENTITY_NAME.toUpperCase());
-			
-		String inputDescriptor = actionEvent.getHeaders().get(ActionEventHeaderConstants.INPUT_DESCRIPTOR);
-		if(inputDescriptor == null){
-			inputDescriptor = actionEvent.getHeaders().get(ActionEventHeaderConstants.DATE);
-		}
-		Map<String, String> properties = actionEvent.getHeaders();
-		if (validationPassed) {
-			return updateRuntimeInfo(runtimeInfoStore, entityName, inputDescriptor, Status.VALIDATED, properties);
-		} else {
-			return updateRuntimeInfo(runtimeInfoStore, entityName, inputDescriptor, Status.FAILED, properties);
-		}
-	}
+  			boolean validationPassed, ActionEvent actionEvent) throws RuntimeInfoStoreException {
+ 		String entityName = actionEvent.getHeaders().get(ActionEventHeaderConstants.ENTITY_NAME);
+ 		String inputDescriptor = actionEvent.getHeaders().get(ActionEventHeaderConstants.INPUT_DESCRIPTOR);
+ 		Map<String, String> properties = actionEvent.getHeaders();
+  		if (validationPassed) {
+ 			
+ 			return updateRuntimeInfoToStoreAfterValidation(runtimeInfoStore, Status.VALIDATED, actionEvent);
+  		} else {
+ 			
+ 			return updateRuntimeInfoToStoreAfterValidation(runtimeInfoStore, Status.FAILED, actionEvent);
+  		}
+  	}
+	
+	protected <T> boolean updateRuntimeInfoToStoreAfterValidation(final RuntimeInfoStore<RuntimeInfo> runtimeInfoStore,
+			 		RuntimeInfoStore.Status status, ActionEvent actionEvent) throws RuntimeInfoStoreException {
+			 		String entityName = actionEvent.getHeaders().get(ActionEventHeaderConstants.ENTITY_NAME);
+			 		String inputDescriptor = actionEvent.getHeaders().get(ActionEventHeaderConstants.INPUT_DESCRIPTOR);
+			 		Map<String, String> properties = actionEvent.getHeaders();
+			 
+			 		return updateRuntimeInfo(runtimeInfoStore, entityName, inputDescriptor, status, properties);
+			 
+			 	}
+			 
 
 	protected <T> boolean updateRuntimeInfo(final RuntimeInfoStore<RuntimeInfo> runtimeInfoStore,
 			final String entityName, final String inputDescriptor, RuntimeInfoStore.Status status)
