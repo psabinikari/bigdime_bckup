@@ -271,10 +271,10 @@ public class DataCleansingHandler extends AbstractHandler {
 		logger.info("Data Cleansing Handler during processing records","Time taken to process action Events is ={} milliseconds",
 										(endTime - startTime));
 		// getHandlerContext().createSingleItemEventList(actionEvent);
-		if (!actionEvents.isEmpty()) {
-			getSimpleJournal().setEventList(actionEvents);
+		if (actionEvents.isEmpty()) {
+			/*getSimpleJournal().setEventList(actionEvents);
 			statusToReturn = Status.CALLBACK;
-		} else {
+		} else {*/
 			getSimpleJournal().setEventList(null);
 			statusToReturn = Status.READY;
 		}
