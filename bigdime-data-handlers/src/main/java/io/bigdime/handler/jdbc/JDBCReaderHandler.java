@@ -289,7 +289,7 @@ public class JDBCReaderHandler extends AbstractHandler {
 	 * @return
 	 */
 	public boolean processRecords() {
-		boolean splitByFlag = true;
+		boolean moreRecordsExists = true;
 		jdbcTemplate = new JdbcTemplate(lazyConnectionDataSourceProxy);
 		
 		String repoColumnValue = getCurrentColumnValue();
@@ -340,7 +340,7 @@ public class JDBCReaderHandler extends AbstractHandler {
 		else {
 			logger.info("JDBC Reader Handler during processing records",
 					"No more rows found for query={}", sql);
-			splitByFlag = false;
+			moreRecordsExists = false;
 		}
 		// Assigning the current incremental value..
 		if (jdbcInputDescriptor.getIncrementedBy().length() > JdbcConstants.INTEGER_CONSTANT_ZERO
@@ -371,9 +371,9 @@ public class JDBCReaderHandler extends AbstractHandler {
 		}
 		if (jdbcInputDescriptor.getIncrementedBy().length() == JdbcConstants.INTEGER_CONSTANT_ZERO
 				|| jdbcInputDescriptor.getIncrementedBy() == null)
-			splitByFlag = false;
+			moreRecordsExists = false;
 
-		return splitByFlag;
+		return moreRecordsExists;
 	}
 
 	/**
